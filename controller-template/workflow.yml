@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mhatipog/repo-guardian
-          ref: 1fda49ec6a0e5c82da746d6b3edbda5036f80d05
+          ref: d236b720afcc97c115160f6f7749017f9fe83516
           persist-credentials: false
       - name: Run issue or reconciliation
         env:
