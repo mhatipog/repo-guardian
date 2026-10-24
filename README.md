@@ -47,6 +47,10 @@ repo-guardian private-copy octocat/Hello-World --name hello-test-private-copy
 
 For GitHub Actions, use `mhatipog/repo-guardian@<reviewed SHA>` with inputs `token` (an Actions secret) and `request` (strict JSON). See [CLI and reusable GitHub Action](docs/cli-and-action.md). This also makes the project discoverable as a GitHub Action without requiring a ChatGPT-specific plugin.
 
+### Verified deployment — 24 October 2026
+
+Repo Guardian is **running in the owner's private `repo-guardian-control` on a dedicated OCI self-hosted runner** (zero GitHub-hosted runner minutes). Live automation tests passed: [GitHub topics updated](https://github.com/mhatipog/repo-guardian-control/issues/2) and [public upstream → private standalone copy verified](https://github.com/mhatipog/repo-guardian-control/issues/3). The private `RG_ADMIN_TOKEN` was confirmed configured via [controller health test](https://github.com/mhatipog/repo-guardian-control/issues/5). These tests validate this specific personal deployment, not all GitHub permission combinations or scheduling guarantees.
+
 ## Two-repository setup
 
 ```
@@ -65,7 +69,7 @@ ChatGPT GitHub connector
 
 ### Current deployment
 
-The public code and unit tests pass. The private control repo exists, and the token setup is user-managed. The private hosted runner was previously unable to start (**runner_id:0** on a trivial diagnostic job), while `web-operations` uses a separate self-hosted runner. Therefore **end-to-end administration is not yet verified**; the private controller must receive a functioning hosted or self-hosted runner.
+The public code and unit tests pass. The private controller now executes successfully on the dedicated OCI runner, and end-to-end topics and private-copy tests have passed. Cron remains best effort.
 
 [Full ChatGPT deployment guide](docs/chatgpt-bridge.md) · [Security and limitations](docs/safety.md)
 
