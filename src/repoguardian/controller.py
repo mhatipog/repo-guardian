@@ -30,7 +30,7 @@ def safe_repo(full_name):
     if not isinstance(full_name, str) or full_name.count("/") != 1:
         raise Refused("Repository must be owner/name")
     owner, name = full_name.split("/")
-    if not NAME.fullmatch(owner) or not NAME.fullmatch(name) or name in {".", ".."}:
+    if not NAME.fullmatch(owner) or not NAME.fullmatch(name) or owner in {".", ".."} or name in {".", ".."}:
         raise Refused("Invalid repository identifier")
     return full_name
 
@@ -241,6 +241,8 @@ class Control:
         done = "RG_DONE " + request_id
         if any(c.get("body", "").startswith(done) for c in comments):
             return
+        if any(c.get("body", "").startswith("RG_FAILED " + request_id) for c in comments):
+            return  # Never retry a failed mutation without manual inspection
         approval = "APPROVE " + request_id
         authorized = any(
             c.get("body", "").strip() == approval
