@@ -87,7 +87,7 @@ def main(argv=None):
             return 0
         value = parse_intent(json.dumps(request))
         if value["action"] == "status":
-            print("CLI ready: authenticated token provided (not stored).")
+            print("CLI ready: a token was supplied (API permissions not verified).")
             return 0
         print(controller.execute(value))
         return 0

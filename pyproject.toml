@@ -4,10 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "repo-guardian"
-version = "0.2.0"
-description = "Approval-gated GitHub lifecycle automation"
+version = "0.4.0"
+description = "ChatGPT-friendly GitHub repository automation CLI, Action and controller"
 requires-python = ">=3.11"
 license = {text = "MIT"}
+
+[project.scripts]
+repo-guardian = "repoguardian.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

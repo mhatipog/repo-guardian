@@ -14,3 +14,18 @@ jobs:
           python-version: '3.12'
       - name: Run unit tests (no GitHub tokens needed)
         run: PYTHONPATH=src python -m unittest discover -s tests -v
+
+  action-smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Smoke test composite GitHub Action without privileged API calls
+        uses: ./
+        with:
+          token: ${{ github.token }}
+          request: '{"version":1,"action":"status"}'

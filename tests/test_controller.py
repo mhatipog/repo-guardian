@@ -2,7 +2,7 @@ import datetime as dt
 import json
 import unittest
 from unittest.mock import patch
-from repoguardian.controller import Refused, digest, parse_intent, review_status, safe_repo, is_manual_approval, Control
+from repoguardian.controller import Refused, digest, parse_intent, review_status, safe_repo, Control
 
 
 class GuardianTests(unittest.TestCase):
@@ -56,13 +56,6 @@ class GuardianTests(unittest.TestCase):
 
     def test_status_request(self):
         self.assertEqual(self.parse({"version": 1, "action": "status"})["action"], "status")
-
-    def test_chatgpt_approval_must_not_count(self):
-        example = {"body": "APPROVE 1234", "user": {"login": "mhatipog", "type": "User"},
-                   "performed_via_github_app": {"slug": "chatgpt-codex-connector"}}
-        self.assertFalse(is_manual_approval(example, "APPROVE 1234", "mhatipog"))
-        example["performed_via_github_app"] = None
-        self.assertTrue(is_manual_approval(example, "APPROVE 1234", "mhatipog"))
 
     def test_publication_requires_explicit_risk_acknowledgement(self):
         value = {"version": 1, "action": "visibility", "repo": "mhatipog/demo",

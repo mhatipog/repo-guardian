@@ -34,6 +34,19 @@ In the private control repo ChatGPT creates an issue titled `RG: ...` with a str
 
 **Important:** Published code cannot be made secret retroactively. A private copy doesn't preserve upstream issues, PRs, stars or fork association. GitHub Actions cannot guarantee exact-time execution. Important repositories should be reviewed before first publication.
 
+## Execute immediately without the private scheduler
+
+Repo Guardian v0.4 also ships a **Python CLI** and a reusable **GitHub composite Action** that do not require a private controller runner. On a trusted shell, supply an appropriately scoped `RG_ADMIN_TOKEN`, then run:
+
+```bash
+pip install git+https://github.com/mhatipog/repo-guardian.git
+repo-guardian inspect mhatipog/repo-guardian
+repo-guardian topics mhatipog/repo-guardian chatgpt github-automation ai-agents
+repo-guardian private-copy octocat/Hello-World --name hello-test-private-copy
+```
+
+For GitHub Actions, use `mhatipog/repo-guardian@<reviewed SHA>` with inputs `token` (an Actions secret) and `request` (strict JSON). See [CLI and reusable GitHub Action](docs/cli-and-action.md). This also makes the project discoverable as a GitHub Action without requiring a ChatGPT-specific plugin.
+
 ## Two-repository setup
 
 ```
