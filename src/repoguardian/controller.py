@@ -251,7 +251,7 @@ class Control:
         if value["action"] == "status":
             if not any(c.get("body", "").startswith(done) for c in comments):
                 state = "configured" if self.admin_token else "missing"
-                self.comment(number, done + "\\nController alive. RG_ADMIN_TOKEN: " + state + ". No administration request was made.")
+                self.comment(number, done + "\nController alive. RG_ADMIN_TOKEN: " + state + ". No administration request was made.")
                 self.issue_get("/issues/%d" % number, "PATCH", {"state": "closed"})
             return
         if any(c.get("body", "").startswith(done) for c in comments):
@@ -261,7 +261,7 @@ class Control:
         approval = "APPROVE " + request_id
         authorized = any(
             c.get("body", "").strip() == approval
-            and c.get("user", {}).get("login", "").lower() == OWNER
+            and c.get("user", {}).get("login", "").lower() == OWNER.lower()
             and c.get("user", {}).get("type") == "User"
             for c in comments
         )
