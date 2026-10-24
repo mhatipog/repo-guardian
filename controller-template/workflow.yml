@@ -1,0 +1,44 @@
+# Copy to the PRIVATE mhatipog/repo-guardian-control repository as
+# .github/workflows/controller.yml, then pin PUBLIC_CODE_REF to a reviewed SHA.
+name: Repo Guardian controller
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+  schedule:
+    - cron: '7,17,27,37,47,57 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: repo-guardian-serial
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: ${{ github.repository == 'mhatipog/repo-guardian-control' && github.event.repository.private == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout reviewed public controller code
+        uses: actions/checkout@v4
+        with:
+          repository: mhatipog/repo-guardian
+          ref: PUBLIC_CODE_REF_REPLACE_WITH_FULL_COMMIT_SHA
+          persist-credentials: false
+      - name: Run issue or reconciliation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RG_ADMIN_TOKEN: ${{ secrets.RG_ADMIN_TOKEN }}
+          RG_CONTROLLER_PRIVATE: "true"
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ISSUE: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          export PYTHONPATH="$PWD/src"
+          if [[ "$EVENT_NAME" == "issues" || "$EVENT_NAME" == "issue_comment" ]]; then
+            python -m repoguardian.controller --issue "$EVENT_ISSUE"
+          else
+            python -m repoguardian.controller --reconcile
+          fi

@@ -1,0 +1,1 @@
+Security: Report vulnerabilities privately through GitHub security advisories when enabled. Never share credential values in issues, code, screenshots, workflow output, or chat. Treat this project as experimental until independently reviewed.\n

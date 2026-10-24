@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "repo-guardian"
+version = "0.2.0"
+description = "Approval-gated GitHub lifecycle automation"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
