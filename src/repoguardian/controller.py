@@ -134,6 +134,20 @@ def review_status(value, now=None):
     return "ready"
 
 
+def is_manual_approval(comment, expected, owner=OWNER):
+    """Allow only a direct human-account GitHub comment, not an OAuth/GitHub App integration.
+
+    Connected ChatGPT tools can post as the same account owner but their GitHub
+    issue comments contain a non-null 'performed_via_github_app' record.
+    """
+    return (
+        comment.get("body", "").strip() == expected
+        and comment.get("user", {}).get("login", "").lower() == owner.lower()
+        and comment.get("user", {}).get("type") == "User"
+        and comment.get("performed_via_github_app") is None
+    )
+
+
 class Control:
     def __init__(self, issue_token, admin_token, control_repo=CONTROL_REPO):
         if control_repo != CONTROL_REPO:
@@ -259,18 +273,13 @@ class Control:
         if any(c.get("body", "").startswith("RG_FAILED " + request_id) for c in comments):
             return  # Never retry a failed mutation without manual inspection
         approval = "APPROVE " + request_id
-        authorized = any(
-            c.get("body", "").strip() == approval
-            and c.get("user", {}).get("login", "").lower() == OWNER.lower()
-            and c.get("user", {}).get("type") == "User"
-            for c in comments
-        )
+        authorized = any(is_manual_approval(c, approval) for c in comments)
         if not authorized:
             pending = "RG_REVIEW " + request_id
             if not any(c.get("body", "").startswith(pending) for c in comments):
                 self.comment(number,
                     pending + "\nRequest not executed. Review JSON and risks. "
-                    + "For permission to execute THIS exact request, personally comment: "
+                    + "For permission to execute THIS exact request, manually comment using GitHub web UI (not ChatGPT or any GitHub App): "
                     + approval
                     + "\nPublic exposure cannot be reversed. Metadata/backups are not automatically protected.")
             return
