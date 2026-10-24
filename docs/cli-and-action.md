@@ -46,7 +46,7 @@ To reuse it in ChatGPT, ask the agent to prepare/edit a workflow or to open a pr
 
 ## Tokens
 
-GitHub Actions' ordinary `GITHUB_TOKEN` cannot administer other repositories. Provide `RG_ADMIN_TOKEN` through the repository's encrypted Actions secrets. The token needs permission for each requested GitHub API operation, including Administration write for topics and visibility changes.
+GitHub Actions' ordinary `GITHUB_TOKEN` cannot administer other repositories. Provide `RG_ADMIN_TOKEN` through the repository's encrypted Actions secrets. The token needs permission for each requested GitHub API operation: Administration write for topics and visibility changes, Repository creation write for new repositories, and **Contents write access to the newly created destination** for a private Git copy. If using a fine-grained PAT restricted to selected existing repositories, the token may not cover a repository it creates later; choose an appropriate repository selection or use a GitHub App with installation access to the new destination.
 
 **A public workflow is public code:** only grant credentials to trusted default-branch jobs. For personal usage, prefer the private controller or a private workflow on your already-operational runner.
 
