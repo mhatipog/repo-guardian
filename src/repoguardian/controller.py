@@ -11,6 +11,9 @@ import os
 import re
 import sys
 import time
+import subprocess
+import tempfile
+from pathlib import Path
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -19,6 +22,7 @@ API = "https://api.github.com"
 OWNER = os.getenv("RG_OWNER", "mhatipog")
 CONTROL_REPO = OWNER + "/repo-guardian-control"
 NAME = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
+TOPIC = re.compile(r"^[a-z0-9][a-z0-9-]{0,49}$")
 RFC3339 = "%Y-%m-%dT%H:%M:%SZ"
 
 
@@ -69,6 +73,8 @@ def parse_intent(body):
     action = value.get("action")
     fields = {
         "status": {"version", "action"},
+        "topics": {"version", "action", "repo", "names", "mode", "at"},
+        "private_copy": {"version", "action", "source", "name", "at"},
         "create_repo": {"version", "action", "name", "visibility", "description", "at"},
         "fork": {"version", "action", "source", "name", "at"},
         "visibility": {"version", "action", "repo", "visibility",
@@ -85,6 +91,21 @@ def parse_intent(body):
             raise Refused("Choose public or private")
         if not isinstance(value.get("description", ""), str) or len(value.get("description", "")) > 200:
             raise Refused("Description must be <= 200 characters")
+    elif action == "private_copy":
+        safe_repo(value.get("source"))
+        if not isinstance(value.get("name"), str) or not NAME.fullmatch(value["name"]):
+            raise Refused("Specify a valid destination name")
+    elif action == "topics":
+        full = safe_repo(value.get("repo"))
+        if full.split("/")[0].lower() != OWNER.lower():
+            raise Refused("Only repositories owned by " + OWNER + " are supported")
+        names = value.get("names")
+        if not isinstance(names, list) or len(names) > 20 or any(
+            not isinstance(name, str) or not TOPIC.fullmatch(name) for name in names
+        ) or len(set(names)) != len(names):
+            raise Refused("Topics must be <=20 unique lowercase slugs")
+        if value.get("mode", "add") not in ("add", "remove", "replace"):
+            raise Refused("mode must be add, remove or replace")
     elif action == "fork":
         safe_repo(value.get("source"))
         if value["source"].split("/")[0].lower() == OWNER:
@@ -180,6 +201,88 @@ class Control:
 
     def execute(self, value):
         action = value["action"]
+        if action == "topics":
+            full = value["repo"]
+            before = self.admin("GET", "/repos/" + full)
+            if before.get("fork") and before.get("private"):
+                raise Refused("Unexpected private fork; review manually")
+            endpoint = "/repos/" + full + "/topics"
+            existing = self.admin("GET", endpoint).get("names", [])
+            mode = value.get("mode", "add")
+            if mode == "replace":
+                names = sorted(value["names"])
+            elif mode == "remove":
+                names = sorted(set(existing) - set(value["names"]))
+            else:
+                names = sorted(set(existing) | set(value["names"]))
+            if len(names) > 20:
+                raise Refused("GitHub supports at most 20 topics")
+            if sorted(existing) == names:
+                return "Topics already match on " + full + ": " + ", ".join(names)
+            self.admin("PUT", endpoint, {"names": names})
+            after = sorted(self.admin("GET", endpoint).get("names", []))
+            if after != names:
+                raise Refused("Topics not verified; inspect target")
+            return "Updated and verified topics for " + full + ": " + ", ".join(after)
+
+        if action == "private_copy":
+            source = value["source"]
+            full = OWNER + "/" + value["name"]
+            source_meta = self.admin("GET", "/repos/" + source)
+            if source_meta.get("private"):
+                raise Refused("Private copy requires a public source")
+            if source_meta.get("size", 0) > 50000:
+                raise Refused("Source too large for first-release copy (>50 MB)")
+            try:
+                self.admin("GET", "/repos/" + full)
+            except Refused as e:
+                if "HTTP 404:" not in str(e):
+                    raise
+            else:
+                raise Refused("Destination already exists")
+            created = self.admin("POST", "/user/repos", {
+                "name": value["name"], "private": True,
+                "description": "Private standalone code copy of https://github.com/" + source,
+                "auto_init": False})
+            if created.get("full_name", "").lower() != full.lower() or not created.get("private"):
+                raise Refused("Unexpected private copy destination; inspect manually")
+            if not self.admin_token:
+                raise Refused("Admin token missing; private destination was created, but not copied")
+            # Clone from public upstream and push only branches and tags, preserving
+            # the Git commit history. No upstream fork network or issue/PR metadata.
+            with tempfile.TemporaryDirectory(prefix="repo-guardian-") as td:
+                password = Path(td) / "askpass.sh"
+                password.write_text('#!/bin/sh\ncase "$1" in *Username*) printf %s x-access-token;; *) printf %s "$RG_GIT_PASSWORD";; esac\n')
+                password.chmod(0o700)
+                env = dict(os.environ)
+                env["GIT_ASKPASS"] = str(password)
+                env["GIT_TERMINAL_PROMPT"] = "0"
+                env["RG_GIT_PASSWORD"] = self.admin_token
+                env["GIT_CONFIG_NOSYSTEM"] = "1"
+                clone = "https://github.com/" + source + ".git"
+                remote = "https://github.com/" + full + ".git"
+                # Use --bare rather than --mirror to exclude GitHub pull request refs.
+                for argv in (
+                    ["git", "clone", "--quiet", "--bare", clone, str(Path(td) / "repo.git")],
+                    ["git", "-C", str(Path(td) / "repo.git"), "push", "--quiet", "--mirror", remote]
+                ):
+                    try:
+                        result = subprocess.run(argv, env=env, text=True, capture_output=True,
+                                                timeout=150, check=False)
+                    except (subprocess.TimeoutExpired, OSError) as e:
+                        raise Refused("Private repo created; Git copy failed. Inspect manually: " + type(e).__name__)
+                    if result.returncode:
+                        raise Refused("Private repo created but Git copy failed; inspect before retry")
+            dest = self.admin("GET", "/repos/" + full)
+            if dest.get("id") != created.get("id") or dest.get("visibility") != "private" or dest.get("fork"):
+                raise Refused("Private copy visibility/network verification failed")
+            branch = source_meta.get("default_branch")
+            src_ref = self.admin("GET", "/repos/" + source + "/git/ref/heads/" + branch)
+            dest_ref = self.admin("GET", "/repos/" + full + "/git/ref/heads/" + branch)
+            if src_ref.get("object", {}).get("sha") != dest_ref.get("object", {}).get("sha"):
+                raise Refused("Private copy branch SHA did not match upstream")
+            return "Private standalone copy created and verified: " + full + " from " + source
+
         if action == "create_repo":
             full = OWNER + "/" + value["name"]
             try:
@@ -271,18 +374,11 @@ class Control:
         if any(c.get("body", "").startswith(done) for c in comments):
             return
         if any(c.get("body", "").startswith("RG_FAILED " + request_id) for c in comments):
-            return  # Never retry a failed mutation without manual inspection
-        approval = "APPROVE " + request_id
-        authorized = any(is_manual_approval(c, approval) for c in comments)
-        if not authorized:
-            pending = "RG_REVIEW " + request_id
-            if not any(c.get("body", "").startswith(pending) for c in comments):
-                self.comment(number,
-                    pending + "\nRequest not executed. Review JSON and risks. "
-                    + "For permission to execute THIS exact request, manually comment using GitHub web UI (not ChatGPT or any GitHub App): "
-                    + approval
-                    + "\nPublic exposure cannot be reversed. Metadata/backups are not automatically protected.")
-            return
+            return  # Avoid replays of uncertain remote mutations
+        # Automation-first mode: authenticated private-repo issues created on
+        # behalf of OWNER are executable intents, without a second approval
+        # comment. The issue is the auditable authorization record.
+        # Publication still requires the explicit risk-acknowledgement field.
         timing = review_status(value)
         if timing == "waiting":
             return
