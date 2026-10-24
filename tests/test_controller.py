@@ -1,7 +1,8 @@
 import datetime as dt
 import json
 import unittest
-from repoguardian.controller import Refused, digest, parse_intent, review_status, safe_repo, is_manual_approval
+from unittest.mock import patch
+from repoguardian.controller import Refused, digest, parse_intent, review_status, safe_repo, is_manual_approval, Control
 
 
 class GuardianTests(unittest.TestCase):
@@ -95,6 +96,55 @@ class GuardianTests(unittest.TestCase):
             self.parse({"version": 1, "action": "private_copy",
                         "source": "octocat/Hello-World",
                         "name": "rg-smoke-private", "run": "rm -rf /"})
+
+    def test_topics_execute_merges_and_verifies(self):
+        c = Control("issue-token", "admin-token")
+        records = []
+        def fake_admin(method, endpoint, payload=None):
+            records.append((method, endpoint, payload))
+            if endpoint == "/repos/mhatipog/repo-guardian":
+                return {"id": 4, "fork": False, "private": False}
+            if endpoint.endswith("/topics"):
+                if method == "PUT":
+                    return {"names": payload["names"]}
+                if sum(1 for record in records if record[0] == "GET" and record[1].endswith("/topics")) == 1:
+                    return {"names": ["python"]}
+                return {"names": ["chatgpt", "github-automation", "python"]}
+            raise AssertionError(endpoint)
+        with patch.object(c, "admin", side_effect=fake_admin):
+            message = c.execute({"action":"topics","repo":"mhatipog/repo-guardian",
+                                 "names":["chatgpt", "github-automation"],"mode":"add"})
+        self.assertIn("chatgpt", message)
+        self.assertIn(("PUT", "/repos/mhatipog/repo-guardian/topics",
+                       {"names":["chatgpt", "github-automation", "python"]}), records)
+
+    def test_private_copy_creates_nonfork_private_and_checks_sha(self):
+        c = Control("issue-token", "admin-token")
+        seen = []
+        def fake_admin(method, endpoint, payload=None):
+            seen.append((method, endpoint, payload))
+            if endpoint == "/repos/octocat/Hello-World":
+                return {"size": 2, "private": False, "default_branch": "master"}
+            if endpoint == "/repos/mhatipog/fixture-private" and method == "GET":
+                if any(v[0]=="POST" and v[1]=="/user/repos" for v in seen):
+                    return {"id": 321, "visibility": "private", "fork": False}
+                raise Refused("GitHub returned HTTP 404: Not Found")
+            if endpoint == "/user/repos":
+                return {"id": 321, "full_name": "mhatipog/fixture-private", "private": True}
+            if endpoint in ("/repos/octocat/Hello-World/git/ref/heads/master",
+                            "/repos/mhatipog/fixture-private/git/ref/heads/master"):
+                return {"object":{"sha":"abc123"}}
+            raise AssertionError((method,endpoint,payload))
+        with patch.object(c, "admin", side_effect=fake_admin), patch(
+                "repoguardian.controller.subprocess.run") as proc:
+            proc.return_value.returncode = 0
+            proc.return_value.stdout = ""
+            proc.return_value.stderr = ""
+            result = c.execute({"action":"private_copy","source":"octocat/Hello-World",
+                                "name":"fixture-private"})
+        self.assertIn("verified", result)
+        self.assertEqual(proc.call_count, 2)
+        self.assertTrue(any(x[0]=="POST" and x[1]=="/user/repos" and x[2]["private"] for x in seen))
 
     def test_invalid_date(self):
         with self.assertRaises(Refused):
