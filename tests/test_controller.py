@@ -71,6 +71,31 @@ class GuardianTests(unittest.TestCase):
         value["acknowledge_public_exposure"] = True
         self.assertEqual(self.parse(value)["visibility"], "public")
 
+    def test_add_topics(self):
+        v = self.parse({"version": 1, "action": "topics",
+                        "repo": "mhatipog/repo-guardian",
+                        "names": ["chatgpt", "github-automation"]})
+        self.assertEqual(v["names"], ["chatgpt", "github-automation"])
+
+    def test_reject_invalid_topics(self):
+        for bad in [["Private"], ["trailing-"], ["a" * 51], ["hello/world"],
+                    ["dupe", "dupe"], ["x"] * 21]:
+            with self.assertRaises(Refused):
+                self.parse({"version": 1, "action": "topics",
+                            "repo": "mhatipog/repo-guardian",
+                            "names": bad})
+
+    def test_private_copy(self):
+        v = self.parse({"version": 1, "action": "private_copy",
+                        "source": "octocat/Hello-World", "name": "rg-smoke-private"})
+        self.assertEqual(v["source"], "octocat/Hello-World")
+
+    def test_no_arbitrary_shell(self):
+        with self.assertRaises(Refused):
+            self.parse({"version": 1, "action": "private_copy",
+                        "source": "octocat/Hello-World",
+                        "name": "rg-smoke-private", "run": "rm -rf /"})
+
     def test_invalid_date(self):
         with self.assertRaises(Refused):
             self.parse({'version': 1, 'action': 'create_repo', 'name': 'test',
