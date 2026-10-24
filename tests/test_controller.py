@@ -1,7 +1,7 @@
 import datetime as dt
 import json
 import unittest
-from repoguardian.controller import Refused, digest, parse_intent, review_status, safe_repo
+from repoguardian.controller import Refused, digest, parse_intent, review_status, safe_repo, is_manual_approval
 
 
 class GuardianTests(unittest.TestCase):
@@ -52,6 +52,24 @@ class GuardianTests(unittest.TestCase):
         self.assertEqual(review_status({
             'at': '2026-11-10T09:00:00Z', 'action': 'visibility',
             'visibility': 'public'}, now), 'waiting')
+
+    def test_status_request(self):
+        self.assertEqual(self.parse({"version": 1, "action": "status"})["action"], "status")
+
+    def test_chatgpt_approval_must_not_count(self):
+        example = {"body": "APPROVE 1234", "user": {"login": "mhatipog", "type": "User"},
+                   "performed_via_github_app": {"slug": "chatgpt-codex-connector"}}
+        self.assertFalse(is_manual_approval(example, "APPROVE 1234", "mhatipog"))
+        example["performed_via_github_app"] = None
+        self.assertTrue(is_manual_approval(example, "APPROVE 1234", "mhatipog"))
+
+    def test_publication_requires_explicit_risk_acknowledgement(self):
+        value = {"version": 1, "action": "visibility", "repo": "mhatipog/demo",
+                 "visibility": "public", "expected_repo_id": 123, "expected_visibility": "private"}
+        with self.assertRaises(Refused):
+            self.parse(value)
+        value["acknowledge_public_exposure"] = True
+        self.assertEqual(self.parse(value)["visibility"], "public")
 
     def test_invalid_date(self):
         with self.assertRaises(Refused):
