@@ -22,7 +22,7 @@ API = "https://api.github.com"
 OWNER = os.getenv("RG_OWNER", "mhatipog")
 CONTROL_REPO = OWNER + "/repo-guardian-control"
 NAME = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
-TOPIC = re.compile(r"^[a-z0-9][a-z0-9-]{0,49}$")
+TOPIC = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$")
 RFC3339 = "%Y-%m-%dT%H:%M:%SZ"
 
 
