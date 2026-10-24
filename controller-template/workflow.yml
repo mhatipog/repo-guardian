@@ -18,7 +18,7 @@ concurrency:
 jobs:
   reconcile:
     if: ${{ github.event.repository.name == 'repo-guardian-control' && github.event.repository.private == true }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RG_RUNNER_LABELS || '["ubuntu-latest"]') }}
     timeout-minutes: 12
     steps:
       - name: Checkout reviewed public controller code
