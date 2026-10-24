@@ -16,8 +16,8 @@ import urllib.parse
 import urllib.request
 
 API = "https://api.github.com"
-OWNER = "mhatipog"
-CONTROL_REPO = "mhatipog/repo-guardian-control"
+OWNER = os.getenv("RG_OWNER", "mhatipog")
+CONTROL_REPO = OWNER + "/repo-guardian-control"
 NAME = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
 RFC3339 = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -68,14 +68,17 @@ def parse_intent(body):
         raise Refused("Expected JSON object with version: 1")
     action = value.get("action")
     fields = {
+        "status": {"version", "action"},
         "create_repo": {"version", "action", "name", "visibility", "description", "at"},
         "fork": {"version", "action", "source", "name", "at"},
         "visibility": {"version", "action", "repo", "visibility",
-                       "expected_repo_id", "expected_visibility", "at"},
+                       "expected_repo_id", "expected_visibility", "at", "acknowledge_public_exposure"},
     }
     if action not in fields or set(value) - fields[action]:
         raise Refused("Invalid action or unsupported JSON fields")
-    if action == "create_repo":
+    if action == "status":
+        pass
+    elif action == "create_repo":
         if not isinstance(value.get("name"), str) or not NAME.fullmatch(value["name"]):
             raise Refused("Invalid repository name")
         if value.get("visibility") not in ("public", "private"):
@@ -100,6 +103,8 @@ def parse_intent(body):
             raise Refused("Supply numeric expected_repo_id from a live inspection")
         if value["visibility"] == value["expected_visibility"]:
             raise Refused("Requested visibility is unchanged")
+        if value["visibility"] == "public" and value.get("acknowledge_public_exposure") is not True:
+            raise Refused("Publication requires acknowledge_public_exposure: true")
     at = value.get("at")
     if at is not None:
         if not isinstance(at, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", at):
@@ -133,8 +138,8 @@ class Control:
     def __init__(self, issue_token, admin_token, control_repo=CONTROL_REPO):
         if control_repo != CONTROL_REPO:
             raise Refused("Controller must run in the dedicated private repository")
-        if not issue_token or not admin_token:
-            raise Refused("Both GITHUB_TOKEN and RG_ADMIN_TOKEN are required")
+        if not issue_token:
+            raise Refused("GITHUB_TOKEN is required for request tracking")
         self.issues_token = issue_token
         self.admin_token = admin_token
         self.repo = control_repo
@@ -143,6 +148,8 @@ class Control:
         return request_api(self.issues_token, method, "/repos/" + self.repo + path, payload)
 
     def admin(self, method, path, payload=None):
+        if not self.admin_token:
+            raise Refused("RG_ADMIN_TOKEN is not configured; no privileged operation was executed")
         return request_api(self.admin_token, method, path, payload)
 
     def comments(self, number):
@@ -231,6 +238,8 @@ class Control:
             return
         if issue.get("state") != "open":
             return
+        if issue.get("user", {}).get("login", "").lower() != OWNER.lower():
+            return  # Never accept commands from other users, even in a private control repo
         try:
             value = parse_intent(issue.get("body"))
             request_id = digest(value)
@@ -239,6 +248,12 @@ class Control:
             return
         comments = self.comments(number)
         done = "RG_DONE " + request_id
+        if value["action"] == "status":
+            if not any(c.get("body", "").startswith(done) for c in comments):
+                state = "configured" if self.admin_token else "missing"
+                self.comment(number, done + "\\nController alive. RG_ADMIN_TOKEN: " + state + ". No administration request was made.")
+                self.issue_get("/issues/%d" % number, "PATCH", {"state": "closed"})
+            return
         if any(c.get("body", "").startswith(done) for c in comments):
             return
         if any(c.get("body", "").startswith("RG_FAILED " + request_id) for c in comments):
