@@ -257,7 +257,7 @@ class Control:
                     except (subprocess.TimeoutExpired, OSError) as e:
                         raise Refused("Private repo created; Git copy failed. Inspect manually: " + type(e).__name__)
                     if result.returncode:
-                        raise Refused("Private repo created but Git copy failed; inspect before retry")
+                        raise Refused("Private destination created, but Git push failed; token needs Contents write access to newly created repo. Inspect before retry")
             dest = self.admin("GET", "/repos/" + full)
             if dest.get("id") != created.get("id") or dest.get("visibility") != "private" or dest.get("fork"):
                 raise Refused("Private copy visibility/network verification failed")
