@@ -61,7 +61,7 @@ To schedule it, add `"at":"2026-11-10T09:00:00Z"` (UTC). To turn it private agai
 
 ## Execution and reliability
 
-Your **private** `.github/workflows/controller.yml` must point to a tested public engine SHA. It runs on request creation and on a 10-minute cron. Only private GitHub Actions secrets contain the PAT. **A stored secret is not enough if GitHub cannot start a runner.** GitHub-hosted runners may be blocked by spending limits or account configuration; personal-account self-hosted runners may need separate registration on this repository. Hosted GitHub Actions cron can run late or drop runs. The controller rejects publication more than 20 minutes late but currently cannot promise exact deadlines, nor send independent failure alerts.
+Your **private** `.github/workflows/controller.yml` must point to a tested public engine SHA. It runs on request creation and on a 10-minute cron. Only private GitHub Actions secrets contain the PAT. A private standalone code copy also requires **Contents: write** for its newly created destination; a fine-grained PAT limited to selected existing repositories may not cover newly created repositories. Check this before attempting a private copy. **A stored secret is not enough if GitHub cannot start a runner.** GitHub-hosted runners may be blocked by spending limits or account configuration; personal-account self-hosted runners may need separate registration on this repository. Hosted GitHub Actions cron can run late or drop runs. The controller rejects publication more than 20 minutes late but currently cannot promise exact deadlines, nor send independent failure alerts.
 
 ## Automation principles
 
