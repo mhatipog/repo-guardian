@@ -14,6 +14,11 @@ jobs:
           python-version: '3.12'
       - name: Run unit tests (no GitHub tokens needed)
         run: PYTHONPATH=src python -m unittest discover -s tests -v
+      - name: Verify pip install and CLI command
+        run: |
+          python -m pip install --disable-pip-version-check -q .
+          repo-guardian --help
+          repo-guardian topics --help
 
   action-smoke:
     runs-on: ubuntu-latest
