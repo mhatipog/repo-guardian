@@ -1,37 +1,19 @@
-# Safety properties and limitations
+# Behavior and technical limits
 
-## Threat model
+**Automation is the default.** The private control issue is an execution request. Manual GitHub approval comments are not required. The default permits low-friction repository creation, topics, private standalone copies, forks and visibility changes from owner-submitted private issues, including ChatGPT-generated issues.
 
-An AI assistant or third-party GitHub App can submit a controller request issue **as the human owner's GitHub user**. Identity alone does not prove manual authorization. The controller rejects GitHub App-originated approval comments even if their `user.login` equals the owner's. The human must approve on GitHub's own website. This was confirmed by inspecting the `performed_via_github_app` field on a ChatGPT-originated issue comment.
+A user-authorized ChatGPT issue executes with a separate admin token in private GitHub Actions secrets. This is a privileged delegation. Limit access to that private repo and be cautious about automation based on untrusted content or ambiguous user instructions. Repo Guardian isn't a managed ChatGPT app.
 
-The controller workflow must be hosted in a **private** repository. Its high-privilege token belongs only in GitHub Actions Secrets, never in a checked-in file. Executable controller source is checked out from a fixed, reviewed commit SHA, not a mutable public branch. Untrusted user input is parsed as strict JSON, never executed as shell code.
+Command parser permits only known actions, validated repository names, topics and UTC timestamps. Visibility checks identity/state; public publication requires explicit `acknowledge_public_exposure:true`. All changes are verified afterward. These checks are for correctness and GitHub network constraints, not human approval ceremonies.
 
-## Visibility consequences
+## Known GitHub limitations
 
-- Private → public exposes Git history and GitHub Actions history/logs, potentially revealing formerly private information. Push rulesets can be disabled. Stars/watchers are affected.
-- Public → private doesn't undo external clones, public forks, or previous disclosure. Public forks can be detached and stay public. GitHub Pages and other features may change.
-- Fork visibility is tied to upstream visibility; not independently configurable.
-- GitHub fork-network detachment and replacement can lose issues, pull requests, stars and repository-specific metadata. This version never automatically deletes or detaches forks.
+- Forks of public repositories must remain public. A private Git standalone copy isn't a fork network member.
+- Publishing a private repo exposes full Git history and previous Actions logs. Returning to private cannot revoke external copies and stars/watchers can be lost.
+- A private source mirror does NOT include GitHub issues, PRs, stars, releases, Actions history, webhook settings and all repository-level metadata; it preserves Git branches and tags.
+- GitHub Actions scheduled events are not exact and can be missed. The 10-minute cron is best effort.
+- The private GitHub Actions runner must be eligible and available. The controller hasn't yet completed a credentialed end-to-end test on this account.
 
-## Checks implemented
+## Not provided in v0.3
 
-- Strict action-specific request fields and validated repo identifiers
-- GitHub account owner restriction on requests and approvals
-- Request hash ties approval to JSON content
-- App-originated approval comments refused
-- Private workflow boundary
-- Explicit acknowledgement for private → public
-- Live target repository ID, visibility, fork and archival guards
-- Fresh post-action GET verification
-- No blind replay after a recorded ambiguous API error
-- Late publication deadline refusal after 20 minutes
-
-## Not yet implemented
-
-- Commit-history-wide secret detection
-- Independent backups of Git objects, metadata, issues, PRs, and Actions artifacts
-- Independent scheduler, watchdog, missed-job notification and delivery SLA
-- Security review of token provisioning, cross-organization support, API error/replay edge cases
-- Production integration tests against expendable repositories
-
-**Treat v0.2 as experimental**, not a guarantee of reversible operations or private data protection.
+Automatic fork-network detachment, issue/PR metadata backup, all-history secret detection, production SLA monitoring, automatic private-source sync, token rotation and complex organization policies.

@@ -1,19 +1,15 @@
-# Instructions for ChatGPT, Codex, GitHub Copilot and other AI agents
+# ChatGPT / Codex / GitHub Copilot agent instructions for Repo Guardian
 
-Repo Guardian is a safety-first GitHub repository lifecycle controller, **not a blanket delegation of GitHub administration**.
+Repo Guardian is a GitHub repository lifecycle command bridge. The user wants low-friction **automation**, not repeated approval prompts.
 
-If the user requests to CREATE a new repository, FORK an upstream repository, or CHANGE repository VISIBILITY:
-1. Verify the connected GitHub tools' actual capabilities. If a native operation is supported, obey its approval semantics. Otherwise, use a private `repo-guardian-control` request issue when installed.
-2. Inspect any existing target live and obtain its immutable numeric repository ID and visibility before planning a visibility change.
-3. Construct a **single JSON object** in the issue body with the exact supported schema in `docs/chatgpt-bridge.md`. Issue title starts `RG:`. Don't wrap JSON in Markdown fences.
-4. Clearly explain to the user that this is a proposal and is **NOT** execution.
-5. NEVER add or edit a comment beginning `APPROVE `, NEVER infer approval from a chat message, and NEVER claim to have approved on the user's behalf. Approval requires an independent manual GitHub-web comment by the account owner.
-6. Never request, display, log, store in an issue, or paste a PAT, private key, or secret value. Credentials belong in GitHub Actions encrypted secrets in a **private** repository.
-7. Confirm results only from a verified controller `RG_DONE` log or live target state; don't infer success from a submitted issue or workflow run trigger.
-8. Don't publish unknown/private commit histories without an explicit risk review. GitHub public-to-private is not rollback of public exposure.
-9. Never automate detach/delete/recreate of upstream forks in this version.
-10. For ordinary code changes and PRs, use GitHub's existing ChatGPT connector; the admin bridge is unnecessary.
+1. For PR creation and ordinary code edits, call the connected GitHub tools directly.
+2. For repository creation, public forks, private standalone copies, GitHub topic updates, and scheduled visibility changes, open an **issue** titled `RG: <summary>` in the user's PRIVATE `repo-guardian-control` repository.
+3. Issue body must be a SINGLE JSON object matching [examples/requests.md](examples/requests.md); don't wrap it in Markdown fences. No code, shell commands or secrets in the issue.
+4. No second manual approval comment is required. User-authorized issue creation is the trigger.
+5. For visibility changes, inspect numeric GitHub repository ID and current visibility first; for publication include `"acknowledge_public_exposure":true` after informing the user that public copies persist.
+6. Forks of public GitHub repos are public and cannot independently be made private. To satisfy "private fork", propose the `private_copy` action and explain that the result is a standalone private Git mirror with no upstream fork association.
+7. Reconcile result from GitHub: `RG_DONE` means the controller verified the operation; an issue being opened is not success. If private Actions can't allocate a runner or RG_ADMIN_TOKEN isn't configured, say so plainly.
+8. Never obtain or reveal the PAT value; it belongs in private GitHub Actions secrets.
+9. Scheduling uses best-effort Actions cron; do not promise an exact publication/privatization time.
 
-Supported actions: `status`, `create_repo`, `fork`, `visibility`. Times are UTC ISO-8601. There is no exact-time scheduling guarantee. Refer to [docs/chatgpt-bridge.md](docs/chatgpt-bridge.md) for permission scopes and request examples.
-
-Prefer user's express constraints. On unsupported permissions or unavailable private runners, report the blocker honestly without suggesting the operation succeeded.
+Actions: `status`, `topics`, `create_repo`, `fork`, `private_copy`, `visibility`. Details at [docs/chatgpt-bridge.md](docs/chatgpt-bridge.md).

@@ -1,30 +1,16 @@
 ---
 name: repo-guardian
-description: Safely propose creation, forks, visibility transitions and scheduled changes to GitHub repositories through a private controller, with manual approval and post-action verification.
+description: Automation-first ChatGPT GitHub repository management: create repositories, fork public repos, privately copy upstream Git history, add GitHub topics, schedule public/private visibility and verify changes.
 ---
 
-# Repo Guardian skill for ChatGPT and coding agents
+# Repo Guardian agent skill
 
-**Not an installed ChatGPT connector:** these are portable instructions for an agent with existing GitHub issue/PR tools. The user needs to set up the separate Repo Guardian private controller.
+This is portable instruction text, not an installed native ChatGPT plugin.
 
-## When to use
+Use the existing GitHub connector to create a private `RG:` request issue for actions not exposed by the connected tools. The private controller executes the issue and verifies GitHub state using the user's separately stored Actions secret. No second manual approval comment.
 
-When the user asks in natural language for:
-- "Create a new GitHub repository"
-- "Fork GitHub repository X"
-- "Schedule making my repo public / private"
-- "Change GitHub repository visibility"
-- "Get me out of this fork network" (analysis and manual guidance only)
+Read [AGENTS.md](../../AGENTS.md), [examples/requests.md](../../examples/requests.md), and [docs/chatgpt-bridge.md](../../docs/chatgpt-bridge.md).
 
-## Operational procedure
+Never claim the request has executed until the controller reports `RG_DONE` or live GitHub state independently confirms it. For real PRs, use existing GitHub connector methods. For public upstream→private GitHub repository, use `private_copy`, not `fork`: GitHub prohibits making a public fork independently private.
 
-1. Read [docs/chatgpt-bridge.md](../../docs/chatgpt-bridge.md) and [AGENTS.md](../../AGENTS.md).
-2. Check whether `<user>/repo-guardian-control` is installed, private, and reachable with the GitHub connector. Do not invent missing permissions.
-3. For a visibility request, inspect the exact repository ID and current visibility before writing an issue.
-4. Open a controller issue titled `RG: <human summary>` with body containing ONLY validated request JSON. For public publication, include `acknowledge_public_exposure: true` only after explaining irreversible consequences.
-5. Return the issue URL. This is a proposal, not the completed action.
-6. Never create a GitHub `APPROVE` comment through an AI tool. The human must approve independently through GitHub's web UI.
-7. Read controller status if requested, and require verification before claiming completion.
-8. Native GitHub file edits and PRs should use the already connected GitHub tools directly.
-
-Repository administration secrets must never appear in chat or tracked files. Exact-time scheduler and irreversible fork detach are unsupported by the initial release.
+Handle GitHub topic addition (`topics`, `mode:add`), private repo creation (`create_repo`), true public fork (`fork`), private standalone copy (`private_copy`), and repo visibility transitions (`visibility`). No tokens in user-facing requests. Cron reliability is best effort.
