@@ -19,6 +19,9 @@ Repo Guardian is an open-source, *experimental* GitHub repository controller des
 
 In the private control repo ChatGPT creates an issue titled `RG: ...` with a strict JSON command. **No extra approval comment is required** for account-owner requests; the controller processes the request immediately or at the specified UTC schedule. Code and token are separated. Publication requires a simple `acknowledge_public_exposure: true` field in the requested JSON.
 
+
+- **Upstream pull requests (connector fallback):** publish a reviewed branch from your own public fork to its actual upstream repository with a strict `open_pr` request. Requires an exact expected head SHA and explicit public-exposure acknowledgement. Verify the resulting PR on GitHub. The existing GitHub connector remains the first choice.
+
 ## Features
 
 | Action | How it works |
