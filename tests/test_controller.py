@@ -83,7 +83,7 @@ class GuardianTests(unittest.TestCase):
         base = {"version": 1, "action": "metadata", "repo": "mhatipog/example", "expected_repo_id": 1435626896}
         self.assertEqual(self.parse({**base, "description": "Open-source Spark checks"})["expected_repo_id"], 1435626896)
         bad_values = [
-            {**base, "description": "a\\nb"},
+            {**base, "description": "a\nb"},
             {**base, "description": "x" * 161},
             {**base, "homepage": "javascript:alert(1)"},
             {**base, "homepage": "https://name:pass@github.com/a"},
