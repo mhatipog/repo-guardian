@@ -79,6 +79,50 @@ class GuardianTests(unittest.TestCase):
                             "repo": "mhatipog/repo-guardian",
                             "names": bad})
 
+    def test_metadata_validation(self):
+        base = {"version": 1, "action": "metadata", "repo": "mhatipog/example", "expected_repo_id": 1435626896}
+        self.assertEqual(self.parse({**base, "description": "Open-source Spark checks"})["expected_repo_id"], 1435626896)
+        bad_values = [
+            {**base, "description": "a\\nb"},
+            {**base, "description": "x" * 161},
+            {**base, "homepage": "javascript:alert(1)"},
+            {**base, "homepage": "https://name:pass@github.com/a"},
+            {**base, "expected_repo_id": True, "description": "hello"},
+            {**base, "repo": "another/repo", "description": "hello"},
+            {**base, "description": "hello", "shell": "x"},
+            base,
+        ]
+        for bad in bad_values:
+            with self.subTest(bad=bad), self.assertRaises(Refused):
+                self.parse(bad)
+
+    def test_metadata_apply_and_verify(self):
+        ctrl = Control("issue-token", "admin-token")
+        calls = []
+        def fake_admin(method, endpoint, payload=None):
+            calls.append((method, endpoint, payload))
+            if method == "GET":
+                patched = any(x[0] == "PATCH" for x in calls)
+                return {"id": 1435626896, "fork": False, "archived": False,
+                        "description": "New desc" if patched else None,
+                        "homepage": "https://github.com/mhatipog/example" if patched else None}
+            if method == "PATCH":
+                return {"id": 1435626896}
+            raise AssertionError((method, endpoint))
+        command = {"action": "metadata", "repo": "mhatipog/example",
+                   "expected_repo_id": 1435626896, "description": "New desc",
+                   "homepage": "https://github.com/mhatipog/example"}
+        with patch.object(ctrl, "admin", side_effect=fake_admin):
+            self.assertIn("verified", ctrl.execute(command))
+        self.assertIn(("PATCH", "/repos/mhatipog/example",
+                       {"description": "New desc", "homepage": command["homepage"]}), calls)
+
+    def test_metadata_rejects_changed_repo_identity(self):
+        ctrl = Control("issue-token", "admin-token")
+        with patch.object(ctrl, "admin", return_value={"id": 999}):
+            with self.assertRaises(Refused):
+                ctrl.execute({"action": "metadata", "repo": "mhatipog/example",
+                              "expected_repo_id": 1435626896, "description": "New desc"})
     def test_private_copy(self):
         v = self.parse({"version": 1, "action": "private_copy",
                         "source": "octocat/Hello-World", "name": "rg-smoke-private"})

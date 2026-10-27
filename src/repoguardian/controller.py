@@ -74,6 +74,7 @@ def parse_intent(body):
     action = value.get("action")
     fields = {
         "status": {"version", "action"},
+        "metadata": {"version", "action", "repo", "expected_repo_id", "description", "homepage"},
         "topics": {"version", "action", "repo", "names", "mode", "at"},
         "private_copy": {"version", "action", "source", "name", "at"},
         "create_repo": {"version", "action", "name", "visibility", "description", "at"},
@@ -87,6 +88,28 @@ def parse_intent(body):
         raise Refused("Invalid action or unsupported JSON fields")
     if action == "status":
         pass
+    elif action == "metadata":
+        full = safe_repo(value.get("repo"))
+        if full.split("/")[0].lower() != OWNER.lower():
+            raise Refused("Only repositories owned by " + OWNER + " are supported")
+        if type(value.get("expected_repo_id")) is not int or value["expected_repo_id"] <= 0:
+            raise Refused("Supply expected_repo_id from a live repository inspection")
+        if not any(k in value for k in ("description", "homepage")):
+            raise Refused("Supply a description or homepage")
+        if "description" in value:
+            description = value["description"]
+            if (not isinstance(description, str) or len(description) > 160
+                    or "\n" in description or "\r" in description):
+                raise Refused("Description must be a single line of <=160 characters")
+        if "homepage" in value:
+            homepage = value["homepage"]
+            if not isinstance(homepage, str) or len(homepage) > 2048:
+                raise Refused("Homepage must be an HTTPS URL or empty string")
+            parsed = urllib.parse.urlsplit(homepage)
+            if homepage and (parsed.scheme != "https" or not parsed.hostname
+                             or parsed.username or parsed.password
+                             or any(c.isspace() for c in homepage)):
+                raise Refused("Homepage must be HTTPS without credentials or whitespace")
     elif action == "create_repo":
         if not isinstance(value.get("name"), str) or not NAME.fullmatch(value["name"]):
             raise Refused("Invalid repository name")
@@ -195,6 +218,23 @@ class Control:
 
     def execute(self, value):
         action = value["action"]
+        if action == "metadata":
+            full = value["repo"]
+            endpoint = "/repos/" + full
+            before = self.admin("GET", endpoint)
+            if (before.get("id") != value["expected_repo_id"]
+                    or before.get("fork") or before.get("archived")):
+                raise Refused("Repository identity/status mismatch; inspect before updating metadata")
+            update = {key: value[key] for key in ("description", "homepage") if key in value}
+            if all((before.get(k) or "") == v for k, v in update.items()):
+                return "Metadata already matches for " + full
+            self.admin("PATCH", endpoint, update)
+            after = self.admin("GET", endpoint)
+            if after.get("id") != before.get("id") or any(
+                (after.get(k) or "") != v for k, v in update.items()
+            ):
+                raise Refused("Metadata update not verified; inspect repository")
+            return "Updated and verified metadata for " + full
         if action == "topics":
             full = value["repo"]
             before = self.admin("GET", "/repos/" + full)

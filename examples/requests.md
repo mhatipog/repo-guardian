@@ -40,3 +40,8 @@ Open a PR from your reviewed public fork when the installed GitHub connector lac
 ```
 
 The controller verifies the fork/upstream relationship and the exact head commit before publication, rejects arbitrary upstream repositories and stale branches, and verifies the created PR.
+
+Update an existing repo description/homepage (no visibility change):
+```json
+{"version":1,"action":"metadata","repo":"mhatipog/umig6-metering-quality","expected_repo_id":1435626896,"description":"PySpark metering data quality, source provenance, quarantine and legacy MIG6 migration readiness for Belgian energy pipelines","homepage":"https://github.com/mhatipog/umig6-metering-quality/tree/main/docs/HANDOFF.md"}
+```

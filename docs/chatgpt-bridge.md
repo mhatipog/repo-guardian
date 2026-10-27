@@ -71,3 +71,12 @@ Your **private** `.github/workflows/controller.yml` must point to a tested publi
 - Never expose PATs or GitHub App keys in chat. Set expiration and minimum required scopes on the repository secret.
 - Identity and post-change verification are simple correctness checks, not second approval gates.
 - Once a command is submitted, status remains **pending** until verified by GitHub.
+
+
+#### Update existing repository description and homepage
+
+An authenticated controller issue can update the description and HTTPS homepage of an owned repository. Supply the stable numeric repo ID from live GitHub inspection. The controller checks its identity and verifies the post-update values. No visibility changes occur.
+
+```json
+{"version":1,"action":"metadata","repo":"mhatipog/umig6-metering-quality","expected_repo_id":1435626896,"description":"PySpark metering data quality, source provenance, quarantine and legacy MIG6 migration readiness for Belgian energy pipelines","homepage":"https://github.com/mhatipog/umig6-metering-quality/tree/main/docs/HANDOFF.md"}
+```
