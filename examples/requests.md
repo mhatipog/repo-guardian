@@ -31,3 +31,12 @@ Bring back to private (does not undo public exposure):
 ```json
 {"version":1,"action":"visibility","repo":"mhatipog/research-r82","visibility":"private","expected_repo_id":12345678,"expected_visibility":"public","at":"2026-11-11T09:00:00Z"}
 ```
+
+
+Open a PR from your reviewed public fork when the installed GitHub connector lacks upstream write permission:
+
+```json
+{"version":1,"action":"open_pr","fork":"mhatipog/example-fork","upstream":"upstream/project","head":"fix/example","base":"main","expected_head_sha":"0123456789abcdef0123456789abcdef01234567","title":"Fix a reproducible bug","body":"Describe the problem, tests and upgrade risks.","draft":false,"acknowledge_public_exposure":true}
+```
+
+The controller verifies the fork/upstream relationship and the exact head commit before publication, rejects arbitrary upstream repositories and stale branches, and verifies the created PR.
