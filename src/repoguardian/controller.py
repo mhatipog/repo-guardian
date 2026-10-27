@@ -17,6 +17,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from .pr_bridge import PrRefused, validate as validate_pr, submit as submit_pr
+
 API = "https://api.github.com"
 OWNER = os.getenv("RG_OWNER", "mhatipog")
 CONTROL_REPO = OWNER + "/repo-guardian-control"
@@ -76,6 +78,8 @@ def parse_intent(body):
         "private_copy": {"version", "action", "source", "name", "at"},
         "create_repo": {"version", "action", "name", "visibility", "description", "at"},
         "fork": {"version", "action", "source", "name", "at"},
+        "open_pr": {"version", "action", "fork", "upstream", "head", "base",
+                    "expected_head_sha", "title", "body", "draft", "acknowledge_public_exposure"},
         "visibility": {"version", "action", "repo", "visibility",
                        "expected_repo_id", "expected_visibility", "at", "acknowledge_public_exposure"},
     }
@@ -111,6 +115,11 @@ def parse_intent(body):
             raise Refused("Forking own account repositories is not supported in v0.2")
         if not isinstance(value.get("name"), str) or not NAME.fullmatch(value["name"]):
             raise Refused("Specify a valid destination fork name")
+    elif action == "open_pr":
+        try:
+            validate_pr(value, OWNER)
+        except PrRefused as e:
+            raise Refused(str(e)) from None
     elif action == "visibility":
         full = safe_repo(value.get("repo"))
         if full.split("/")[0].lower() != OWNER:
@@ -314,6 +323,12 @@ class Control:
                         raise
                 time.sleep(3)
             raise Refused("Fork accepted but not fully verified; inspect manually")
+
+        if action == "open_pr":
+            try:
+                return submit_pr(value, self.admin, OWNER)
+            except PrRefused as e:
+                raise Refused(str(e)) from None
 
         if action == "visibility":
             full = value["repo"]
