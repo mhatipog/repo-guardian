@@ -17,3 +17,10 @@ Command parser permits only known actions, validated repository names, topics an
 ## Not provided in v0.3
 
 Automatic fork-network detachment, issue/PR metadata backup, all-history secret detection, production SLA monitoring, automatic private-source sync, token rotation and complex organization policies.
+
+
+## Public pull request bridge
+
+The optional `open_pr` command is for publishing a reviewed branch from an account-owned **public fork** to its actual upstream repository when the usual GitHub connector cannot create a PR. It requires a 40-character expected head commit SHA and an explicit acknowledgement that the PR title and body will be public. The controller verifies the fork-parent relationship, head SHA, target branch and resulting PR identity. It does not push code, change branches, use shell-supplied input or write to unrelated repositories.
+
+Whether the admin PAT can submit a PR depends on its GitHub scopes and the upstream repository policy. An upstream HTTP 403 is reported as a failed request; never bypass that by changing permissions or broadening the target.
