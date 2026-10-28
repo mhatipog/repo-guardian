@@ -401,7 +401,17 @@ class Control:
             value = parse_intent(issue.get("body"))
             request_id = digest(value)
         except Refused as e:
-            self.comment(number, "RG_REJECTED: " + str(e))
+            # Validation failed before any privileged operation. Close the
+            # request so reconciliation will not repeat it every ten minutes.
+            # Older controllers used unkeyed RG_REJECTED comments; recognize
+            # those too when cleaning up existing requests.
+            if not any(
+                comment.get("body", "").startswith("RG_REJECTED")
+                for comment in self.comments(number)
+            ):
+                self.comment(number, "RG_REJECTED: " + str(e))
+            self.issue_get("/issues/%d" % number, "PATCH",
+                           {"state": "closed", "state_reason": "not_planned"})
             return
         comments = self.comments(number)
         done = "RG_DONE " + request_id
