@@ -14,3 +14,5 @@ Read [AGENTS.md](../../AGENTS.md), [examples/requests.md](../../examples/request
 Never claim the request has executed until the controller reports `RG_DONE` or live GitHub state independently confirms it. For real PRs, use existing GitHub connector methods. For public upstream→private GitHub repository, use `private_copy`, not `fork`: GitHub prohibits making a public fork independently private.
 
 Handle GitHub topic addition (`topics`, `mode:add`), private repo creation (`create_repo`), true public fork (`fork`), private standalone copy (`private_copy`), and repo visibility transitions (`visibility`). No tokens in user-facing requests. Cron reliability is best effort.
+
+For public upstream contributions, never create draft PRs and never publish under a bot or someone else's identity. Only the owner's authenticated token may create an upstream PR; the controller does not comment/reply/review upstream. Do not include public PR links in private bot status comments, which can cause upstream GitHub cross-reference events. Show the validated upstream link directly to the user.
