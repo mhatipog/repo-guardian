@@ -13,3 +13,11 @@ Repo Guardian is a GitHub repository lifecycle command bridge. The user wants lo
 9. Scheduling uses best-effort Actions cron; do not promise an exact publication/privatization time.
 
 Actions: `status`, `topics`, `create_repo`, `fork`, `private_copy`, `visibility`. Details at [docs/chatgpt-bridge.md](docs/chatgpt-bridge.md).
+
+## Upstream PR identity and review policy
+
+- Always open upstream PRs **ready for review**, not in draft. Repo Guardian rejects `"draft":true` and submits `draft:false`. An existing draft is not treated as ready.
+- Publish with the owner's personal GitHub token, validated through GitHub `GET /user`. Never impersonate the account owner, another person, or a bot.
+- Do not autonomously post upstream PR comments, review replies, or reviews. Draft suggested maintainer responses for the user to review and post personally.
+- Keep private controller's GitHub Actions bot status messages private and **free of upstream PR URLs or `owner/repo#number` references**. Linkable references create unwanted bot events on the public PR. Present verified upstream PR links directly in ChatGPT, not in automation issue comments.
+- Platform-generated GitHub checks and events still display GitHub's own bot identity; this policy controls only messages authored by Repo Guardian.
