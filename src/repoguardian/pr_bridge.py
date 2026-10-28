@@ -52,6 +52,8 @@ def validate(value, owner):
         raise PrRefused("PR body must be 20-12000 characters")
     if not isinstance(value.get("draft", False), bool):
         raise PrRefused("draft must be a boolean")
+    if value.get("draft", False):
+        raise PrRefused("Repo Guardian does not publish draft PRs")
     if value.get("acknowledge_public_exposure") is not True:
         raise PrRefused("Opening a public PR requires acknowledge_public_exposure: true")
     return value
@@ -60,6 +62,12 @@ def validate(value, owner):
 def submit(value, admin, owner):
     """Verify fork relationship/head lease and verify created or existing PR."""
     validate(value, owner)
+    # Publishing must use the owner's personal token, never a bot or another user.
+    actor = admin("GET", "/user")
+    if (not isinstance(actor, dict)
+            or actor.get("login", "").lower() != owner.lower()
+            or actor.get("type", "User") != "User"):
+        raise PrRefused("Publishing an upstream PR requires the owner's personal GitHub token")
     source, target, head, base = (value[k] for k in ("fork", "upstream", "head", "base"))
     expected_sha = value["expected_head_sha"].lower()
     fork = admin("GET", "/repos/" + source)
@@ -92,7 +100,7 @@ def submit(value, admin, owner):
         created = admin("POST", "/repos/" + target + "/pulls", {
             "title": value["title"], "body": value["body"],
             "head": owner + ":" + head, "base": base,
-            "draft": value.get("draft", False), "maintainer_can_modify": True,
+            "draft": False, "maintainer_can_modify": True,
         })
     number = created.get("number")
     if type(number) is not int or number <= 0:
@@ -103,9 +111,12 @@ def submit(value, admin, owner):
             or verified.get("head", {}).get("repo", {}).get("full_name", "").lower() != source.lower()
             or verified.get("base", {}).get("repo", {}).get("full_name", "").lower() != target.lower()
             or verified.get("base", {}).get("ref") != base
-            or verified.get("user", {}).get("login", "").lower() != owner.lower()):
+            or verified.get("user", {}).get("login", "").lower() != owner.lower()
+            or verified.get("draft") is not False):
         raise PrRefused("PR was created or found but failed identity/head verification")
     url = verified.get("html_url", "")
     if url != "https://github.com/" + target + "/pull/" + str(number):
         raise PrRefused("PR URL mismatch")
-    return "Verified upstream PR: " + url + " (head " + expected_sha[:12] + ")"
+    # Keep public URLs out of private GitHub Actions bot status comments.
+    # They create an unwanted cross-reference on the upstream conversation.
+    return "Verified upstream pull request number " + str(number) + " (head " + expected_sha[:12] + ")"

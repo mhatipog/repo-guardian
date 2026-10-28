@@ -80,3 +80,9 @@ An authenticated controller issue can update the description and HTTPS homepage 
 ```json
 {"version":1,"action":"metadata","repo":"mhatipog/umig6-metering-quality","expected_repo_id":1435626896,"description":"PySpark metering data quality, source provenance, quarantine and legacy MIG6 migration readiness for Belgian energy pipelines","homepage":"https://github.com/mhatipog/umig6-metering-quality/tree/main/docs/HANDOFF.md"}
 ```
+
+## Upstream PR identity and review readiness
+
+`open_pr` always submits `draft:false`; `draft:true` is rejected. Before publishing, the controller checks the authenticated GitHub identity of `RG_ADMIN_TOKEN` via `GET /user`. It refuses service accounts, bots, and identities other than the configured owner, and verifies the final PR is non-draft and authored by that owner. If the PAT lacks permission for `GET /user` or publishing to that upstream, it fails closed.
+
+The controller **does not comment or review upstream PRs**. It reports execution only in private control issues, intentionally omitting public PR URLs and `owner/repo#number` references from the GitHub Actions bot's status comments to avoid an upstream cross-reference. ChatGPT may separately show the independently verified PR URL to the user. GitHub's own platform-generated workflow activity is outside this control.
