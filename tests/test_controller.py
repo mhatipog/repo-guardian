@@ -189,5 +189,73 @@ class GuardianTests(unittest.TestCase):
                         'visibility': 'private', 'at': '2026-13-10T09:00:00Z'})
 
 
+    def test_invalid_requests_are_closed_and_not_reprocessed(self):
+        invalid_bodies = (
+            "not json",
+            json.dumps({"version": 1, "action": "create_repo",
+                        "name": "test", "visibility": "public",
+                        "acknowledge_public_exposure": True}),
+        )
+        for body in invalid_bodies:
+            with self.subTest(body=body):
+                issue = {"number": 17, "title": "RG: invalid request",
+                         "body": body, "state": "open",
+                         "user": {"login": "mhatipog"}}
+                comments = []
+                writes = []
+
+                def fake_issue_get(path, method="GET", payload=None):
+                    if path.startswith("/issues?"):
+                        return [dict(issue)] if issue["state"] == "open" else []
+                    if path == "/issues/17":
+                        if method == "PATCH":
+                            writes.append(payload)
+                            issue["state"] = payload["state"]
+                        return dict(issue)
+                    raise AssertionError((path, method, payload))
+
+                def fake_comment(number, message):
+                    self.assertEqual(number, 17)
+                    comments.append({"body": message})
+
+                controller = Control("issue-token", "admin-token")
+                with patch.object(controller, "issue_get", side_effect=fake_issue_get), \
+                     patch.object(controller, "comments", side_effect=lambda _: list(comments)), \
+                     patch.object(controller, "comment", side_effect=fake_comment), \
+                     patch.object(controller, "execute") as execute:
+                    controller.reconcile()
+                    controller.reconcile()
+
+                execute.assert_not_called()
+                self.assertEqual(len(comments), 1)
+                self.assertTrue(comments[0]["body"].startswith("RG_REJECTED:"))
+                self.assertEqual(writes, [{"state": "closed",
+                                           "state_reason": "not_planned"}])
+
+    def test_legacy_rejection_is_closed_without_duplicate_comment(self):
+        issue = {"number": 21, "title": "RG: old invalid request",
+                 "body": "not json", "state": "open",
+                 "user": {"login": "mhatipog"}}
+        legacy = [{"body": "RG_REJECTED: Issue body must be a single JSON object"}]
+        controller = Control("issue-token", "admin-token")
+
+        def fake_issue_get(path, method="GET", payload=None):
+            if path == "/issues/21":
+                if method == "PATCH":
+                    self.assertEqual(payload["state"], "closed")
+                    issue["state"] = "closed"
+                return dict(issue)
+            raise AssertionError((path, method, payload))
+
+        with patch.object(controller, "issue_get", side_effect=fake_issue_get), \
+             patch.object(controller, "comments", return_value=legacy), \
+             patch.object(controller, "comment") as comment, \
+             patch.object(controller, "execute") as execute:
+            controller.process_issue(21)
+        self.assertEqual(issue["state"], "closed")
+        comment.assert_not_called()
+        execute.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()
