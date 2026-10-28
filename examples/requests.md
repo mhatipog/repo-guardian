@@ -45,3 +45,5 @@ Update an existing repo description/homepage (no visibility change):
 ```json
 {"version":1,"action":"metadata","repo":"mhatipog/umig6-metering-quality","expected_repo_id":1435626896,"description":"PySpark metering data quality, source provenance, quarantine and legacy MIG6 migration readiness for Belgian energy pipelines","homepage":"https://github.com/mhatipog/umig6-metering-quality/tree/main/docs/HANDOFF.md"}
 ```
+
+Repo Guardian creates upstream PRs **ready for review**. Omit `draft` or supply `"draft":false`; requests with `"draft":true` are rejected. It authenticates the publishing PAT as the account owner, never posts on upstream conversations using the GitHub Actions bot, and avoids linkable public PR URLs in private controller result comments.
