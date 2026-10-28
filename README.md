@@ -77,3 +77,7 @@ The public code and unit tests pass. The private controller now executes success
 [Full ChatGPT deployment guide](docs/chatgpt-bridge.md) · [Security and limitations](docs/safety.md)
 
 **Search terms:** ChatGPT GitHub repository management, GitHub topic automation, GitHub fork to private copy, automate GitHub repository visibility, scheduled GitHub private public, AI agent repository administration, GitHub Actions automation.
+
+### Publishing PRs as the owner
+
+Repo Guardian's `open_pr` action only publishes **ready-for-review** upstream PRs (`draft:false`) and checks that the publishing token authenticates as the GitHub owner. Draft requests, bot accounts, and other users are rejected. Repo Guardian never posts comments/reviews on public PRs and avoids cross-referencing PR links in its private GitHub Actions bot status messages. See [AGENTS.md](AGENTS.md) for the policy.
