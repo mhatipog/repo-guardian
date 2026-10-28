@@ -21,8 +21,11 @@ REQUEST = {
 }
 
 
-def fake_response(method, path, payload=None, existing=False, mismatch=False):
+def fake_response(method, path, payload=None, existing=False, mismatch=False,
+                  draft=False, actor="mhatipog"):
     if method == "GET":
+        if path == "/user":
+            return {"login": actor, "type": "User"}
         if path == "/repos/" + FORK:
             return {"full_name": FORK, "fork": True, "private": False,
                     "parent": {"full_name": UPSTREAM}}
@@ -38,11 +41,12 @@ def fake_response(method, path, payload=None, existing=False, mismatch=False):
             return {"number": 15, "state": "open",
                     "head": {"sha": SHA, "repo": {"full_name": FORK}},
                     "base": {"ref": "main", "repo": {"full_name": UPSTREAM}},
-                    "user": {"login": OWNER},
+                    "user": {"login": OWNER}, "draft": draft,
                     "html_url": "https://github.com/" + UPSTREAM + "/pull/15"}
     if method == "POST" and path == "/repos/" + UPSTREAM + "/pulls":
         assert payload["head"] == "mhatipog:fix/private-endpoint-default-names"
         assert payload["maintainer_can_modify"] is True
+        assert payload["draft"] is False
         return {"number": 15}
     raise AssertionError((method, path, payload))
 
@@ -82,7 +86,10 @@ class PRBridgeTests(unittest.TestCase):
         def api(*args):
             calls.append(args)
             return fake_response(*args)
-        self.assertIn("/pull/15", submit(REQUEST, api, OWNER))
+        result = submit(REQUEST, api, OWNER)
+        self.assertIn("pull request number 15", result)
+        self.assertNotIn("https://", result)  # no automated cross-reference
+        self.assertEqual(("GET", "/user"), calls[0][:2])
         self.assertEqual(1, sum(v[0] == "POST" for v in calls))
 
     def test_existing_pr_is_idempotent(self):
@@ -90,8 +97,33 @@ class PRBridgeTests(unittest.TestCase):
         def api(*args):
             calls.append(args)
             return fake_response(*args, existing=True)
-        self.assertIn("Verified upstream PR", submit(REQUEST, api, OWNER))
+        self.assertIn("Verified upstream pull request number 15", submit(REQUEST, api, OWNER))
         self.assertFalse(any(v[0] == "POST" for v in calls))
+
+    def test_draft_is_refused(self):
+        self.assertEqual(validate({**REQUEST, "draft": False}, OWNER)["draft"], False)
+        with self.assertRaisesRegex(PrRefused, "does not publish draft"):
+            validate({**REQUEST, "draft": True}, OWNER)
+        with self.assertRaises(Refused):
+            parse_intent(__import__("json").dumps({**REQUEST, "draft": True}))
+
+    def test_token_actor_must_match_owner(self):
+        calls = []
+        def api(*args):
+            calls.append(args)
+            return fake_response(*args, actor="not-the-owner")
+        with self.assertRaisesRegex(PrRefused, "personal GitHub token"):
+            submit(REQUEST, api, OWNER)
+        self.assertEqual([("GET", "/user")], [c[:2] for c in calls])
+
+    def test_existing_draft_is_not_accepted(self):
+        calls = []
+        def api(*args):
+            calls.append(args)
+            return fake_response(*args, existing=True, draft=True)
+        with self.assertRaisesRegex(PrRefused, "identity/head verification"):
+            submit(REQUEST, api, OWNER)
+        self.assertFalse(any(c[0] == "POST" for c in calls))
 
     def test_sha_mismatch_refuses_before_write(self):
         calls = []
@@ -112,7 +144,7 @@ class PRBridgeTests(unittest.TestCase):
             return fake_response(method, path, payload)
         with self.assertRaises(PrRefused):
             submit(REQUEST, api, OWNER)
-        self.assertEqual([("GET", "/repos/" + FORK)], calls)
+        self.assertEqual([("GET", "/user"), ("GET", "/repos/" + FORK)], calls)
 
 
 if __name__ == "__main__":
