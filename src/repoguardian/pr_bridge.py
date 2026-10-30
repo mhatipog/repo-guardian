@@ -120,3 +120,65 @@ def submit(value, admin, owner):
     # Keep public URLs out of private GitHub Actions bot status comments.
     # They create an unwanted cross-reference on the upstream conversation.
     return "Verified upstream pull request number " + str(number) + " (head " + expected_sha[:12] + ")"
+
+
+def validate_body_update(value, owner):
+    """Allow only a leased body edit on the owner's own upstream PR."""
+    allowed = {"version", "action", "fork", "upstream", "pr_number",
+               "expected_head_sha", "expected_body", "body",
+               "acknowledge_public_exposure"}
+    if set(value) - allowed or value.get("version") != 1 or value.get("action") != "update_pr_body":
+        raise PrRefused("Invalid PR body update request")
+    source, target = repo(value.get("fork")), repo(value.get("upstream"))
+    if source.split("/")[0].lower() != owner.lower() or source.lower() == target.lower():
+        raise PrRefused("PR must originate from an owner-controlled fork")
+    if type(value.get("pr_number")) is not int or value["pr_number"] < 1:
+        raise PrRefused("Supply a positive PR number")
+    if not isinstance(value.get("expected_head_sha"), str) or not SHA.fullmatch(value["expected_head_sha"]):
+        raise PrRefused("Supply exact expected head SHA")
+    for field in ("expected_body", "body"):
+        if not isinstance(value.get(field), str) or not 20 <= len(value[field]) <= 12000:
+            raise PrRefused(field + " must be 20-12000 characters")
+    if value.get("acknowledge_public_exposure") is not True:
+        raise PrRefused("Updating a public PR requires acknowledge_public_exposure: true")
+    return value
+
+
+def update_body(value, admin, owner):
+    """Verify identity and current content before editing, then re-read the PR."""
+    validate_body_update(value, owner)
+    actor = admin("GET", "/user")
+    if (not isinstance(actor, dict) or actor.get("login", "").lower() != owner.lower()
+            or actor.get("type", "User") != "User"):
+        raise PrRefused("Updating an upstream PR requires the owner's personal GitHub token")
+    source, target = value["fork"], value["upstream"]
+    fork = admin("GET", "/repos/" + source)
+    if (fork.get("fork") is not True or fork.get("private") is not False
+            or fork.get("archived") or fork.get("full_name", "").lower() != source.lower()
+            or fork.get("parent", {}).get("full_name", "").lower() != target.lower()):
+        raise PrRefused("PR source is not the owner's public fork of the upstream")
+    upstream = admin("GET", "/repos/" + target)
+    if (upstream.get("private") or upstream.get("archived")
+            or upstream.get("full_name", "").lower() != target.lower()):
+        raise PrRefused("Upstream identity mismatch")
+    endpoint = "/repos/" + target + "/pulls/" + str(value["pr_number"])
+    def matches(pr):
+        return (pr.get("number") == value["pr_number"]
+                and pr.get("state") == "open" and pr.get("draft") is False
+                and pr.get("head", {}).get("sha", "").lower() == value["expected_head_sha"].lower()
+                and pr.get("head", {}).get("repo", {}).get("full_name", "").lower() == source.lower()
+                and pr.get("base", {}).get("repo", {}).get("full_name", "").lower() == target.lower()
+                and pr.get("user", {}).get("login", "").lower() == owner.lower()
+                and pr.get("html_url") == "https://github.com/" + target + "/pull/" + str(value["pr_number"]))
+    before = admin("GET", endpoint)
+    if not matches(before):
+        raise PrRefused("PR identity, author, state, or head changed; refusing body update")
+    if before.get("body") == value["body"]:
+        return "PR body already matches; verified pull request " + str(value["pr_number"])
+    if before.get("body") != value["expected_body"]:
+        raise PrRefused("PR body changed since review; refusing overwrite")
+    admin("PATCH", endpoint, {"body": value["body"]})
+    after = admin("GET", endpoint)
+    if not matches(after) or after.get("body") != value["body"]:
+        raise PrRefused("PR body update not verified; inspect manually")
+    return "Updated and verified body for pull request " + str(value["pr_number"])
