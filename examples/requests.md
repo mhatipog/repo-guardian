@@ -41,6 +41,15 @@ Open a PR from your reviewed public fork when the installed GitHub connector lac
 
 The controller verifies the fork/upstream relationship and the exact head commit before publication, rejects arbitrary upstream repositories and stale branches, and verifies the created PR.
 
+
+Update the description of an existing, owner-authored upstream PR without posting comments. Copy the exact current PR body into `expected_body` so a concurrent edit is refused, and set `body` to the reviewed replacement. Keep the same verified fork and head SHA:
+
+```json
+{"version":1,"action":"update_pr_body","fork":"mhatipog/example-fork","upstream":"upstream/project","pr_number":123,"expected_head_sha":"0123456789abcdef0123456789abcdef01234567","expected_body":"Current PR description from GitHub","body":"Reviewed replacement PR description","acknowledge_public_exposure":true}
+```
+
+The controller verifies the owner's personal token, upstream/fork relationship, PR author and state, exact head SHA, and exact old body before editing; it re-reads the result and never posts a public comment.
+
 Update an existing repo description/homepage (no visibility change):
 ```json
 {"version":1,"action":"metadata","repo":"mhatipog/umig6-metering-quality","expected_repo_id":1435626896,"description":"PySpark metering data quality, source provenance, quarantine and legacy MIG6 migration readiness for Belgian energy pipelines","homepage":"https://github.com/mhatipog/umig6-metering-quality/tree/main/docs/HANDOFF.md"}
