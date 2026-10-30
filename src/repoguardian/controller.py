@@ -17,7 +17,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from .pr_bridge import PrRefused, validate as validate_pr, submit as submit_pr
+from .pr_bridge import (PrRefused, validate as validate_pr, submit as submit_pr,
+                        validate_body_update, update_body)
 
 API = "https://api.github.com"
 OWNER = os.getenv("RG_OWNER", "mhatipog")
@@ -81,6 +82,9 @@ def parse_intent(body):
         "fork": {"version", "action", "source", "name", "at"},
         "open_pr": {"version", "action", "fork", "upstream", "head", "base",
                     "expected_head_sha", "title", "body", "draft", "acknowledge_public_exposure"},
+        "update_pr_body": {"version", "action", "fork", "upstream", "pr_number",
+                           "expected_head_sha", "expected_body", "body",
+                           "acknowledge_public_exposure"},
         "visibility": {"version", "action", "repo", "visibility",
                        "expected_repo_id", "expected_visibility", "at", "acknowledge_public_exposure"},
     }
@@ -141,6 +145,11 @@ def parse_intent(body):
     elif action == "open_pr":
         try:
             validate_pr(value, OWNER)
+        except PrRefused as e:
+            raise Refused(str(e)) from None
+    elif action == "update_pr_body":
+        try:
+            validate_body_update(value, OWNER)
         except PrRefused as e:
             raise Refused(str(e)) from None
     elif action == "visibility":
@@ -367,6 +376,12 @@ class Control:
         if action == "open_pr":
             try:
                 return submit_pr(value, self.admin, OWNER)
+            except PrRefused as e:
+                raise Refused(str(e)) from None
+
+        if action == "update_pr_body":
+            try:
+                return update_body(value, self.admin, OWNER)
             except PrRefused as e:
                 raise Refused(str(e)) from None
 
