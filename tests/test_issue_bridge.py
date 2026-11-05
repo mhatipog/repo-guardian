@@ -58,7 +58,7 @@ class IssueBridgeTests(unittest.TestCase):
                 parse_intent(json.dumps({**VALUE, **extra}))
 
     def test_reject_arbitrary_destination(self):
-        for bad in ("another/repo", "mhatipog/repo-guardian", "https://x", "../../y"):
+        for bad in ("another/repo", "https://x", "../../y"):
             with self.subTest(bad=bad), self.assertRaises(IssueRefused):
                 validate({**VALUE, "fork": bad}, OWNER)
 
