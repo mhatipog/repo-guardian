@@ -19,6 +19,7 @@ import urllib.request
 
 from .pr_bridge import (PrRefused, validate as validate_pr, submit as submit_pr,
                         validate_body_update, update_body)
+from .issue_bridge import IssueRefused, validate as validate_issue, submit as submit_issue
 
 API = "https://api.github.com"
 OWNER = os.getenv("RG_OWNER", "mhatipog")
@@ -82,6 +83,8 @@ def parse_intent(body):
         "fork": {"version", "action", "source", "name", "at"},
         "open_pr": {"version", "action", "fork", "upstream", "head", "base",
                     "expected_head_sha", "title", "body", "draft", "acknowledge_public_exposure"},
+        "open_issue": {"version", "action", "fork", "upstream", "head",
+                       "expected_head_sha", "title", "body", "acknowledge_public_exposure"},
         "update_pr_body": {"version", "action", "fork", "upstream", "pr_number",
                            "expected_head_sha", "expected_body", "body",
                            "acknowledge_public_exposure"},
@@ -146,6 +149,11 @@ def parse_intent(body):
         try:
             validate_pr(value, OWNER)
         except PrRefused as e:
+            raise Refused(str(e)) from None
+    elif action == "open_issue":
+        try:
+            validate_issue(value, OWNER)
+        except IssueRefused as e:
             raise Refused(str(e)) from None
     elif action == "update_pr_body":
         try:
@@ -377,6 +385,12 @@ class Control:
             try:
                 return submit_pr(value, self.admin, OWNER)
             except PrRefused as e:
+                raise Refused(str(e)) from None
+
+        if action == "open_issue":
+            try:
+                return submit_issue(value, self.admin, OWNER)
+            except IssueRefused as e:
                 raise Refused(str(e)) from None
 
         if action == "update_pr_body":
