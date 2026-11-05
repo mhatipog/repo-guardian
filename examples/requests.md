@@ -33,6 +33,14 @@ Bring back to private (does not undo public exposure):
 ```
 
 
+Open a triage issue in a public upstream repository when the GitHub connector cannot write issues there:
+
+```json
+{"version":1,"action":"open_issue","fork":"mhatipog/example-fork","upstream":"upstream/project","head":"fix/example","expected_head_sha":"0123456789abcdef0123456789abcdef01234567","title":"Scoped cleanup removes unrelated folders","body":"Precise reproduction, expected behavior, impact, and test evidence. Provide at least 100 characters so the issue is actionable.","acknowledge_public_exposure":true}
+```
+
+The controller requires a personal owner token, verifies the public fork belongs to the upstream and checks the reviewed head SHA, then confirms the issue created or already present. It never claims that opening the issue constitutes maintainer triage or approval.
+
 Open a PR from your reviewed public fork when the installed GitHub connector lacks upstream write permission:
 
 ```json
