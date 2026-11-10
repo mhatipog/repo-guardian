@@ -430,12 +430,12 @@ class Control:
     def stage_from_issue(self, value, number, comments, request_id):
         """Only private owner-authored issue comments can transfer media bytes."""
         marker = "RG_STAGED " + request_id
-        previous = [c for c in comments if (c.get("body") or "").startswith(marker + "\\n")]
+        previous = [c for c in comments if (c.get("body") or "").startswith(marker + "\n")]
         if len(previous) > 1:
             raise Refused("Duplicate media staging checkpoints")
         if previous:
             try:
-                staged = json.loads(previous[0]["body"].split("\\n", 1)[1])
+                staged = json.loads(previous[0]["body"].split("\n", 1)[1])
             except (ValueError, IndexError) as e:
                 raise Refused("Invalid media upload checkpoint") from e
             verify_staged(value, staged, self.admin, OWNER)
@@ -446,7 +446,7 @@ class Control:
             finally:
                 del data
             # Durable checkpoint makes deletion resumable after worker interruption.
-            self.comment(number, marker + "\\n" + json.dumps(staged, sort_keys=True))
+            self.comment(number, marker + "\n" + json.dumps(staged, sort_keys=True))
         for comment in comments:
             if (comment.get("body") or "").startswith("RG_MEDIA_CHUNK "):
                 try:
