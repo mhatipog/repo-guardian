@@ -20,6 +20,9 @@ import urllib.request
 from .pr_bridge import (PrRefused, validate as validate_pr, submit as submit_pr,
                         validate_body_update, update_body)
 from .issue_bridge import IssueRefused, validate as validate_issue, submit as submit_issue
+from .media_bridge import (MediaRefused, MediaPending, validate as validate_media,
+                           assemble as assemble_media, stage as stage_media,
+                           verify_staged)
 
 API = "https://api.github.com"
 OWNER = os.getenv("RG_OWNER", "mhatipog")
@@ -76,6 +79,7 @@ def parse_intent(body):
     action = value.get("action")
     fields = {
         "status": {"version", "action"},
+        "stage_social_audio": {"version", "action", "repo", "brand", "sha256", "size_bytes", "chunks"},
         "metadata": {"version", "action", "repo", "expected_repo_id", "description", "homepage"},
         "topics": {"version", "action", "repo", "names", "mode", "at"},
         "private_copy": {"version", "action", "source", "name", "at"},
@@ -95,6 +99,11 @@ def parse_intent(body):
         raise Refused("Invalid action or unsupported JSON fields")
     if action == "status":
         pass
+    elif action == "stage_social_audio":
+        try:
+            validate_media(value, OWNER)
+        except MediaRefused as e:
+            raise Refused(str(e)) from None
     elif action == "metadata":
         full = safe_repo(value.get("repo"))
         if full.split("/")[0].lower() != OWNER.lower():
@@ -418,6 +427,36 @@ class Control:
             return "Changed and verified " + full + " to " + value["visibility"]
         raise Refused("Unsupported action")
 
+    def stage_from_issue(self, value, number, comments, request_id):
+        """Only private owner-authored issue comments can transfer media bytes."""
+        marker = "RG_STAGED " + request_id
+        previous = [c for c in comments if (c.get("body") or "").startswith(marker + "\\n")]
+        if len(previous) > 1:
+            raise Refused("Duplicate media staging checkpoints")
+        if previous:
+            try:
+                staged = json.loads(previous[0]["body"].split("\\n", 1)[1])
+            except (ValueError, IndexError) as e:
+                raise Refused("Invalid media upload checkpoint") from e
+            verify_staged(value, staged, self.admin, OWNER)
+        else:
+            data, _ = assemble_media(value, comments, OWNER)
+            try:
+                staged = stage_media(value, data, self.admin, self.admin_token, OWNER)
+            finally:
+                del data
+            # Durable checkpoint makes deletion resumable after worker interruption.
+            self.comment(number, marker + "\\n" + json.dumps(staged, sort_keys=True))
+        for comment in comments:
+            if (comment.get("body") or "").startswith("RG_MEDIA_CHUNK "):
+                try:
+                    self.issue_get("/issues/comments/%d" % comment["id"], "DELETE")
+                except Refused:
+                    # Leave the issue open for the periodic controller retry.
+                    raise MediaPending("Staged asset verified, but chunk cleanup remains pending") from None
+        return ("Private release audio verified; all input comments deleted. "
+                "Calendar audioTrack: " + json.dumps(staged, sort_keys=True))
+
     def process_issue(self, number):
         issue = self.issue_get("/issues/%d" % number)
         if issue.get("pull_request") or not issue.get("title", "").startswith("RG:"):
@@ -467,8 +506,11 @@ class Control:
             self.issue_get("/issues/%d" % number, "PATCH", {"state": "closed"})
             return
         try:
-            outcome = self.execute(value)
-        except Refused as e:
+            outcome = (self.stage_from_issue(value, number, comments, request_id)
+                       if value["action"] == "stage_social_audio" else self.execute(value))
+        except MediaPending:
+            return
+        except (Refused, MediaRefused) as e:
             # Leave open for deliberate inspection; no blind retry of mutations.
             marker = "RG_FAILED " + request_id
             if not any(c.get("body", "").startswith(marker) for c in comments):
