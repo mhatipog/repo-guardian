@@ -18,9 +18,9 @@ def fixture(data=b"ID3" + b"original-audio-bytes" * 64):
     mid -= mid % 4
     chunks = [
         {"id": 101, "user": {"login": "mhatipog"},
-         "body": "RG_MEDIA_CHUNK 1/2\\n" + encoded[:mid]},
+         "body": "RG_MEDIA_CHUNK 1/2\n" + encoded[:mid]},
         {"id": 102, "user": {"login": "mhatipog"},
-         "body": "RG_MEDIA_CHUNK 2/2\\n" + encoded[mid:]},
+         "body": "RG_MEDIA_CHUNK 2/2\n" + encoded[mid:]},
     ]
     return command, chunks
 
@@ -103,7 +103,7 @@ class MediaRelayTests(unittest.TestCase):
         c = Control("issue-token", "admin-token")
         staged = {"assetId": 345678, "sha256": v["sha256"], "startSeconds": 0}
         checkpoint = {"id": 103, "user": {"login": "github-actions[bot]"},
-                      "body": "RG_STAGED " + digest(v) + "\\n" + __import__("json").dumps(staged)}
+                      "body": "RG_STAGED " + digest(v) + "\n" + __import__("json").dumps(staged)}
         deleted = []
         def fake_issue(path, method="GET", payload=None):
             if method == "DELETE":
