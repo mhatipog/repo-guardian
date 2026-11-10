@@ -16,7 +16,7 @@ MAX_BYTES = 8 * 1024 * 1024
 MAX_CHUNKS = 240
 MAX_ENCODED_CHUNK = 55000
 SHA = re.compile(r"^[0-9a-f]{64}$")
-CHUNK = re.compile(r"^RG_MEDIA_CHUNK ([1-9][0-9]*)/([1-9][0-9]*)\\n([A-Za-z0-9+/=\\r\\n]+)$")
+CHUNK = re.compile(r"^RG_MEDIA_CHUNK ([1-9][0-9]*)/([1-9][0-9]*)\n([A-Za-z0-9+/=\r\n]+)$")
 BRANDS = frozenset(("gratistools",))
 TAG = "social-audio-inputs"
 
