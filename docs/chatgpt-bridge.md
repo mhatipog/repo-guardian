@@ -54,6 +54,12 @@ To schedule it, add `"at":"2026-11-10T09:00:00Z"` (UTC). To turn it private agai
 {"version":1,"action":"status"}
 ```
 
+### Owner-approved upstream PR replies
+
+Use the private controller action `comment_pr` **only after the user explicitly approves the exact reply**. Before opening the controller request, read the live PR and the specific maintainer comment. Supply the user's public fork, target upstream, PR number, current head SHA, original comment ID, author and SHA-256 hash of the original comment's full body. Also supply the exact approved reply and `"acknowledge_public_exposure":true`.
+
+The controller rejects requests for other people's PRs, draft/closed PRs, unrelated forks, changed heads, edited original comments, invalid token identity or unknown fields. It searches the PR for an identical owner-authored comment before posting and verifies the returned public comment. This is a PR Conversation comment, **not** an inline threaded reply or review submission. The controller must run a tested, pinned engine revision supporting `comment_pr`.
+
 ## Execution and reliability
 
 Your **private** `.github/workflows/controller.yml` must point to a tested public engine SHA. It runs on request creation and on a 10-minute cron. Only private GitHub Actions secrets contain the PAT. A private standalone code copy also requires **Contents: write** for its newly created destination; a fine-grained PAT limited to selected existing repositories may not cover newly created repositories. Check this before attempting a private copy. **A stored secret is not enough if GitHub cannot start a runner.** GitHub-hosted runners may be blocked by spending limits or account configuration; personal-account self-hosted runners may need separate registration on this repository. Hosted GitHub Actions cron can run late or drop runs. The controller rejects publication more than 20 minutes late but currently cannot promise exact deadlines, nor send independent failure alerts.
