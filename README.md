@@ -22,6 +22,8 @@ In the private control repo ChatGPT creates an issue titled `RG: ...` with a str
 
 - **Upstream pull requests (connector fallback):** publish a reviewed branch from your own public fork to its actual upstream repository with a strict `open_pr` request. Requires an exact expected head SHA and explicit public-exposure acknowledgement. Verify the resulting PR on GitHub. The existing GitHub connector remains the first choice.
 
+Repo Guardian also supports **private researcher vulnerability reports** via the authenticated private controller. Use `report_vulnerability` to submit directly to GitHub's private `/security-advisories/reports` endpoint without opening a public issue. This requires a private controller running a reviewed commit and a suitable owner token. See [Private vulnerability reports](docs/private-security-reports.md). No vulnerability descriptions belong in this public repository.
+
 ## Features
 
 | Action | How it works |
