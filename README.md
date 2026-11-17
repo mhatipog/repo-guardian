@@ -20,7 +20,8 @@ Repo Guardian is an open-source, *experimental* GitHub repository controller des
 In the private control repo ChatGPT creates an issue titled `RG: ...` with a strict JSON command. **No extra approval comment is required** for account-owner requests; the controller processes the request immediately or at the specified UTC schedule. Code and token are separated. Publication requires a simple `acknowledge_public_exposure: true` field in the requested JSON.
 
 
-- **Upstream pull requests (connector fallback):** publish a reviewed branch from your own public fork to its actual upstream repository with a strict `open_pr` request. Requires an exact expected head SHA and explicit public-exposure acknowledgement. Verify the resulting PR on GitHub. The existing GitHub connector remains the first choice.
+- **Upstream pull requests (connector fallback):** publish a reviewed branch from your own public fork to its actual upstream repository with a strict `open_pr` request. Requires an exact expected head SHA and explicit public-exposure acknowledgement. Verify the resulting PR on GitHub.
+- **User-approved PR conversation replies:** `comment_pr` posts only on your own open upstream PR, pinned to an exact head SHA and an existing comment's author, ID and SHA-256. The user must explicitly approve the text. Identity and duplicate checks run before posting; public review submissions remain unsupported. The existing GitHub connector remains the first choice.
 
 Repo Guardian also supports **private researcher vulnerability reports** via the authenticated private controller. Use `report_vulnerability` to submit directly to GitHub's private `/security-advisories/reports` endpoint without opening a public issue. This requires a private controller running a reviewed commit and a suitable owner token. See [Private vulnerability reports](docs/private-security-reports.md). No vulnerability descriptions belong in this public repository.
 
