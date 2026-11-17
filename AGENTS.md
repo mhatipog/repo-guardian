@@ -12,7 +12,7 @@ Repo Guardian is a GitHub repository lifecycle command bridge. The user wants lo
 8. Never obtain or reveal the PAT value; it belongs in private GitHub Actions secrets.
 9. Scheduling uses best-effort Actions cron; do not promise an exact publication/privatization time.
 
-Actions: `status`, `topics`, `create_repo`, `fork`, `private_copy`, `visibility`. Details at [docs/chatgpt-bridge.md](docs/chatgpt-bridge.md).
+Actions: `status`, `topics`, `create_repo`, `fork`, `private_copy`, `visibility`, `report_vulnerability`. Private vulnerability reports must use the private control repository and GitHub's researcher `/security-advisories/reports` endpoint only. Never create a public issue or PR as fallback. Read [private-security-reports.md](docs/private-security-reports.md) and follow the target's security policy. Details at [docs/chatgpt-bridge.md](docs/chatgpt-bridge.md).
 
 ## Upstream PR identity and review policy
 
