@@ -12,8 +12,8 @@ class SecurityReportRefused(Exception):
     pass
 
 
-GHSA = re.compile(r"GHSA-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}\\Z")
-CWE = re.compile(r"CWE-[1-9][0-9]{0,5}\\Z")
+GHSA = re.compile(r"GHSA-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}\Z")
+CWE = re.compile(r"CWE-[1-9][0-9]{0,5}\Z")
 ECOSYSTEMS = frozenset({
     "rubygems", "npm", "pip", "maven", "nuget", "composer",
     "go", "rust", "erlang", "actions", "pub", "other", "swift",
@@ -47,7 +47,7 @@ def validate(value, owner):
     description = value.get("description")
     if (not isinstance(description, str)
             or not 300 <= len(description) <= 28000
-            or any(x in description for x in ("\\x00", "\\r"))):
+            or any(x in description for x in ("\x00", "\r"))):
         raise SecurityReportRefused("Description must be 300-28000 characters of Markdown")
     for section in ("## Summary", "## Details", "## Proof of concept", "## Impact"):
         if section not in description:
