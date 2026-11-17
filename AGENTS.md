@@ -18,6 +18,6 @@ Actions: `status`, `topics`, `create_repo`, `fork`, `private_copy`, `visibility`
 
 - Always open upstream PRs **ready for review**, not in draft. Repo Guardian rejects `"draft":true` and submits `draft:false`. An existing draft is not treated as ready.
 - Publish with the owner's personal GitHub token, validated through GitHub `GET /user`. Never impersonate the account owner, another person, or a bot.
-- Do not autonomously post upstream PR comments, review replies, or reviews. Draft suggested maintainer responses for the user to review and post personally.
+- Do not autonomously initiate public PR discussion. Only post a PR Conversation reply after the user explicitly approves the exact wording and recipient. Use `comment_pr` with the verified owner-authored open PR, exact head SHA, existing maintainer comment ID/author/body hash and public-exposure acknowledgement. Never post reviews or inline review replies. Check GitHub after execution.
 - Keep private controller's GitHub Actions bot status messages private and **free of upstream PR URLs or `owner/repo#number` references**. Linkable references create unwanted bot events on the public PR. Present verified upstream PR links directly in ChatGPT, not in automation issue comments.
 - Platform-generated GitHub checks and events still display GitHub's own bot identity; this policy controls only messages authored by Repo Guardian.
