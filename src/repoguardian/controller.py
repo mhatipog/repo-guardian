@@ -20,6 +20,10 @@ import urllib.request
 from .pr_bridge import (PrRefused, validate as validate_pr, submit as submit_pr,
                         validate_body_update, update_body)
 from .issue_bridge import IssueRefused, validate as validate_issue, submit as submit_issue
+from .security_report_bridge import (
+    SecurityReportRefused, validate as validate_security_report,
+    submit as submit_security_report,
+)
 from .media_bridge import (MediaRefused, MediaPending, validate as validate_media,
                            assemble as assemble_media, stage as stage_media,
                            verify_staged)
@@ -89,6 +93,9 @@ def parse_intent(body):
                     "expected_head_sha", "title", "body", "draft", "acknowledge_public_exposure"},
         "open_issue": {"version", "action", "fork", "upstream", "head",
                        "expected_head_sha", "title", "body", "acknowledge_public_exposure"},
+        "report_vulnerability": {"version", "action", "upstream", "summary", "description",
+                                 "severity", "cwe_ids", "vulnerabilities",
+                                 "acknowledge_private_submission"},
         "update_pr_body": {"version", "action", "fork", "upstream", "pr_number",
                            "expected_head_sha", "expected_body", "body",
                            "acknowledge_public_exposure"},
@@ -163,6 +170,11 @@ def parse_intent(body):
         try:
             validate_issue(value, OWNER)
         except IssueRefused as e:
+            raise Refused(str(e)) from None
+    elif action == "report_vulnerability":
+        try:
+            validate_security_report(value, OWNER)
+        except SecurityReportRefused as e:
             raise Refused(str(e)) from None
     elif action == "update_pr_body":
         try:
@@ -400,6 +412,12 @@ class Control:
             try:
                 return submit_issue(value, self.admin, OWNER)
             except IssueRefused as e:
+                raise Refused(str(e)) from None
+
+        if action == "report_vulnerability":
+            try:
+                return submit_security_report(value, self.admin, OWNER)
+            except SecurityReportRefused as e:
                 raise Refused(str(e)) from None
 
         if action == "update_pr_body":
