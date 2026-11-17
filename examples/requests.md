@@ -50,6 +50,14 @@ Open a PR from your reviewed public fork when the installed GitHub connector lac
 The controller verifies the fork/upstream relationship and the exact head commit before publication, rejects arbitrary upstream repositories and stale branches, and verifies the created PR.
 
 
+Post a **specific user-approved reply** to a maintainer on your own open PR (not a general-purpose discussion bot). Verify the original comment author, ID, exact body SHA-256, the PR's current head SHA, and the user's approved words before requesting publication. Comments are public and cannot be reliably retracted from notification emails:
+
+```json
+{"version":1,"action":"comment_pr","fork":"mhatipog/example-fork","upstream":"upstream/project","pr_number":123,"expected_head_sha":"0123456789abcdef0123456789abcdef01234567","reply_to_comment_id":98765,"expected_comment_author":"maintainer-login","expected_comment_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","body":"Thanks for the suggestion. Would the alternative also handle this case?","acknowledge_public_exposure":true}
+```
+
+Only a GitHub Conversation comment is supported, not an inline review, review approval, or draft discussion. Identical owner-authored comments are detected before posting; controller status comments never include upstream URLs. The example hash is a placeholder; compute the real SHA-256 of the original comment body.
+
 Update the description of an existing, owner-authored upstream PR without posting comments. Copy the exact current PR body into `expected_body` so a concurrent edit is refused, and set `body` to the reviewed replacement. Keep the same verified fork and head SHA:
 
 ```json
