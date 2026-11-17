@@ -55,7 +55,7 @@ def validate(value, owner):
     if value.get("acknowledge_private_submission") is not True:
         raise SecurityReportRefused("Private submission requires explicit acknowledgement")
     severity = value.get("severity")
-    if severity is not None and severity not in {"low", "medium", "high", "critical"}:
+    if severity is not None and (not isinstance(severity, str) or severity not in {"low", "medium", "high", "critical"}):
         raise SecurityReportRefused("Severity must be low, medium, high, critical, or null")
     cwe_ids = value.get("cwe_ids", [])
     if (not isinstance(cwe_ids, list) or len(cwe_ids) > 5 or
