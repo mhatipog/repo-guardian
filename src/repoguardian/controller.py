@@ -20,6 +20,7 @@ import urllib.request
 from .pr_bridge import (PrRefused, validate as validate_pr, submit as submit_pr,
                         validate_body_update, update_body)
 from .issue_bridge import IssueRefused, validate as validate_issue, submit as submit_issue
+from .comment_bridge import CommentRefused, validate as validate_comment, submit as submit_comment
 from .security_report_bridge import (
     SecurityReportRefused, validate as validate_security_report,
     submit as submit_security_report,
@@ -93,6 +94,9 @@ def parse_intent(body):
                     "expected_head_sha", "title", "body", "draft", "acknowledge_public_exposure"},
         "open_issue": {"version", "action", "fork", "upstream", "head",
                        "expected_head_sha", "title", "body", "acknowledge_public_exposure"},
+        "comment_pr": {"version", "action", "fork", "upstream", "pr_number",
+                       "expected_head_sha", "reply_to_comment_id", "expected_comment_author",
+                       "expected_comment_sha256", "body", "acknowledge_public_exposure"},
         "report_vulnerability": {"version", "action", "upstream", "summary", "description",
                                  "severity", "cwe_ids", "vulnerabilities",
                                  "acknowledge_private_submission"},
@@ -170,6 +174,11 @@ def parse_intent(body):
         try:
             validate_issue(value, OWNER)
         except IssueRefused as e:
+            raise Refused(str(e)) from None
+    elif action == "comment_pr":
+        try:
+            validate_comment(value, OWNER)
+        except CommentRefused as e:
             raise Refused(str(e)) from None
     elif action == "report_vulnerability":
         try:
@@ -412,6 +421,12 @@ class Control:
             try:
                 return submit_issue(value, self.admin, OWNER)
             except IssueRefused as e:
+                raise Refused(str(e)) from None
+
+        if action == "comment_pr":
+            try:
+                return submit_comment(value, self.admin, OWNER)
+            except CommentRefused as e:
                 raise Refused(str(e)) from None
 
         if action == "report_vulnerability":
