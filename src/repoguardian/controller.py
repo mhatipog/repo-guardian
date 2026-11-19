@@ -185,7 +185,7 @@ def parse_intent(body):
         if name.lower() == full.split("/")[1].lower():
             raise Refused("New name must be different")
         if "description" in value and (not isinstance(value["description"], str)
-                or len(value["description"]) > 160 or "\\n" in value["description"]):
+                or len(value["description"]) > 160 or any(ord(ch) < 32 for ch in value["description"])):
             raise Refused("Description must be a single line of at most 160 characters")
     elif action == "open_pr":
         try:
