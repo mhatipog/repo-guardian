@@ -25,7 +25,7 @@ class RenamePublicForkTests(unittest.TestCase):
             {"name": "sqlglot"},
             {"expected_repo_id": True},
             {"expected_parent": "mhatipog/sqlglot"},
-            {"description": "a\\nb"},
+            {"description": "a" + chr(10) + "b"},
             {"shell": "curl attacker"},
         ]
         for replacement in bad:
