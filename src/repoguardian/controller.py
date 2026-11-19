@@ -90,6 +90,8 @@ def parse_intent(body):
         "private_copy": {"version", "action", "source", "name", "at"},
         "create_repo": {"version", "action", "name", "visibility", "description", "at"},
         "fork": {"version", "action", "source", "name", "at"},
+        "rename_fork": {"version", "action", "repo", "name", "expected_repo_id",
+                        "expected_parent", "description"},
         "open_pr": {"version", "action", "fork", "upstream", "head", "base",
                     "expected_head_sha", "title", "body", "draft", "acknowledge_public_exposure"},
         "open_issue": {"version", "action", "fork", "upstream", "head",
@@ -168,6 +170,23 @@ def parse_intent(body):
             raise Refused("Forking own account repositories is not supported in v0.2")
         if not isinstance(value.get("name"), str) or not NAME.fullmatch(value["name"]):
             raise Refused("Specify a valid destination fork name")
+    elif action == "rename_fork":
+        full = safe_repo(value.get("repo"))
+        if full.split("/")[0].lower() != OWNER.lower():
+            raise Refused("Can rename only repositories owned by " + OWNER)
+        if type(value.get("expected_repo_id")) is not int or value["expected_repo_id"] <= 0:
+            raise Refused("Rename requires inspected numeric expected_repo_id")
+        parent = safe_repo(value.get("expected_parent"))
+        if parent.split("/")[0].lower() == OWNER.lower():
+            raise Refused("Expected parent must be an external upstream")
+        name = value.get("name")
+        if not isinstance(name, str) or not NAME.fullmatch(name) or name in {".", ".."}:
+            raise Refused("Invalid new repository name")
+        if name.lower() == full.split("/")[1].lower():
+            raise Refused("New name must be different")
+        if "description" in value and (not isinstance(value["description"], str)
+                or len(value["description"]) > 160 or "\\n" in value["description"]):
+            raise Refused("Description must be a single line of at most 160 characters")
     elif action == "open_pr":
         try:
             validate_pr(value, OWNER)
@@ -268,6 +287,38 @@ class Control:
 
     def execute(self, value):
         action = value["action"]
+        if action == "rename_fork":
+            old = value["repo"]
+            new = old.split("/")[0] + "/" + value["name"]
+            before = self.admin("GET", "/repos/" + old)
+            if (before.get("id") != value["expected_repo_id"]
+                    or before.get("full_name", "").lower() != old.lower()
+                    or before.get("archived") or before.get("private")
+                    or not before.get("fork")
+                    or before.get("parent", {}).get("full_name", "").lower() !=
+                    value["expected_parent"].lower()):
+                raise Refused("Public fork identity, parent or state mismatch; inspect before rename")
+            try:
+                self.admin("GET", "/repos/" + new)
+            except Refused as exc:
+                if "HTTP 404:" not in str(exc):
+                    raise
+            else:
+                raise Refused("Destination repository already exists")
+            change = {"name": value["name"]}
+            if "description" in value:
+                change["description"] = value["description"]
+            self.admin("PATCH", "/repos/" + old, change)
+            after = self.admin("GET", "/repos/" + new)
+            if (after.get("id") != before["id"]
+                    or after.get("full_name", "").lower() != new.lower()
+                    or after.get("private") or not after.get("fork")
+                    or after.get("parent", {}).get("full_name", "").lower() !=
+                    value["expected_parent"].lower()):
+                raise Refused("Rename was not fully verified; inspect GitHub")
+            if "description" in value and after.get("description") != value["description"]:
+                raise Refused("Post-rename description mismatch; inspect GitHub")
+            return "Renamed and verified public fork " + old + " to " + new
         if action == "metadata":
             full = value["repo"]
             endpoint = "/repos/" + full
