@@ -72,9 +72,7 @@ def _verify_pr(value, pr):
             value["repo"].lower()
             or pr.get("head", {}).get("repo", {}).get("owner", {}).get("login", "").lower() !=
             value["expected_pr_author"].lower()
-            or not pr.get("head", {}).get("repo", {}).get("fork")
-            or pr.get("head", {}).get("repo", {}).get("parent", {}).get("full_name", "").lower() !=
-            value["repo"].lower()):
+            or not pr.get("head", {}).get("repo", {}).get("fork"):
         raise WorkflowApprovalRefused("PR state, author, fork relationship or head changed")
 
 
@@ -107,6 +105,12 @@ def approve(value, admin, owner):
     _verify_repo(value, repo)
     pr = admin("GET", endpoint + "/pulls/" + str(value["pr_number"]))
     _verify_pr(value, pr)
+    fork_name = pr["head"]["repo"]["full_name"]
+    fork = admin("GET", "/repos/" + fork_name)
+    if (fork.get("full_name", "").lower() != fork_name.lower()
+            or not fork.get("fork")
+            or fork.get("parent", {}).get("full_name", "").lower() != value["repo"].lower()):
+        raise WorkflowApprovalRefused("Fork parent does not match the target repository")
     inspections = []
     for run_id, path in zip(value["run_ids"], value["expected_workflow_paths"]):
         run = admin("GET", endpoint + "/actions/runs/" + str(run_id))
