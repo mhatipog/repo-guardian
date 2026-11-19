@@ -72,7 +72,7 @@ def _verify_pr(value, pr):
             value["repo"].lower()
             or pr.get("head", {}).get("repo", {}).get("owner", {}).get("login", "").lower() !=
             value["expected_pr_author"].lower()
-            or not pr.get("head", {}).get("repo", {}).get("fork"):
+            or not pr.get("head", {}).get("repo", {}).get("fork")):
         raise WorkflowApprovalRefused("PR state, author, fork relationship or head changed")
 
 
