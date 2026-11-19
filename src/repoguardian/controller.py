@@ -19,6 +19,9 @@ import urllib.request
 
 from .pr_bridge import (PrRefused, validate as validate_pr, submit as submit_pr,
                         validate_body_update, update_body)
+from .workflow_approval import (WorkflowApprovalRefused,
+                                validate as validate_workflow_approval,
+                                approve as approve_fork_workflows)
 from .issue_bridge import IssueRefused, validate as validate_issue, submit as submit_issue
 from .comment_bridge import CommentRefused, validate as validate_comment, submit as submit_comment
 from .security_report_bridge import (
@@ -84,6 +87,9 @@ def parse_intent(body):
     action = value.get("action")
     fields = {
         "status": {"version", "action"},
+        "approve_fork_workflows": {"version", "action", "repo", "expected_repo_id", "pr_number",
+                                   "expected_pr_author", "expected_head_sha", "run_ids",
+                                   "expected_workflow_paths", "acknowledge_untrusted_code_execution"},
         "stage_social_audio": {"version", "action", "repo", "brand", "sha256", "size_bytes", "chunks"},
         "metadata": {"version", "action", "repo", "expected_repo_id", "description", "homepage"},
         "topics": {"version", "action", "repo", "names", "mode", "at"},
@@ -115,6 +121,11 @@ def parse_intent(body):
         raise Refused("Invalid action or unsupported JSON fields")
     if action == "status":
         pass
+    elif action == "approve_fork_workflows":
+        try:
+            validate_workflow_approval(value, OWNER)
+        except WorkflowApprovalRefused as e:
+            raise Refused(str(e)) from None
     elif action == "stage_social_audio":
         try:
             validate_media(value, OWNER)
@@ -287,6 +298,11 @@ class Control:
 
     def execute(self, value):
         action = value["action"]
+        if action == "approve_fork_workflows":
+            try:
+                return approve_fork_workflows(value, self.admin, OWNER)
+            except WorkflowApprovalRefused as e:
+                raise Refused(str(e)) from None
         if action == "rename_fork":
             old = value["repo"]
             new = old.split("/")[0] + "/" + value["name"]
