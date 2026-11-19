@@ -77,3 +77,19 @@ Update an existing repo description/homepage (no visibility change):
 ```
 
 Repo Guardian creates upstream PRs **ready for review**. Omit `draft` or supply `"draft":false`; requests with `"draft":true` are rejected. It authenticates the publishing PAT as the account owner, never posts on upstream conversations using the GitHub Actions bot, and avoids linkable public PR URLs in private controller result comments.
+
+## Owner approval of blocked CI on a reviewed first-time fork PR
+
+Approving fork PR workflows is **not** approving the code review or merging the PR.
+A fork PR may run untrusted code. Inspect the diff and workflow files first.
+Supply exact PR head, author, repository ID and each workflow run ID/path.
+The private controller rejects changed refs, unexpected workflows, non-fork PRs
+or approvals in repositories not owned by the controller owner.
+
+```json
+{"version":1,"action":"approve_fork_workflows","repo":"mhatipog/dbt-chaos","expected_repo_id":1461046133,"pr_number":5,"expected_pr_author":"jarichb","expected_head_sha":"a417977e773407864b84f8b4279bed862aeec2a5","run_ids":[44550384408,44550384329],"expected_workflow_paths":[".github/workflows/framework.yml",".github/workflows/commerce-chaos.yml"],"acknowledge_untrusted_code_execution":true}
+```
+
+Use a separate private `RG:` issue for each inspected set of run IDs. A successful
+response only confirms GitHub accepted approval, **not** that the tests passed.
+Review Actions checks afterward, then separately review the PR.
