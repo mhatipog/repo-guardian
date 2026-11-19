@@ -17,6 +17,11 @@ Make a true public fork:
 {"version":1,"action":"fork","source":"octocat/Hello-World","name":"hello-world-public-fork"}
 ```
 
+Rename an existing PUBLIC fork without losing its GitHub fork network or branches (inspect repo ID first):
+```json
+{"version":1,"action":"rename_fork","repo":"mhatipog/sqlglot","name":"queryport","expected_repo_id":1464458837,"expected_parent":"tobymao/sqlglot","description":"QueryPort: tested SQL parsing, dialect transpilation and semantic validation"}
+```
+
 Create a **private standalone copy**, retaining Git history without upstream fork association:
 ```json
 {"version":1,"action":"private_copy","source":"octocat/Hello-World","name":"repo-guardian-smoke-private-copy"}
