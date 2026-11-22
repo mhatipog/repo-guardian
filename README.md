@@ -3,7 +3,7 @@
 **Manage GitHub repositories through ChatGPT: create repos, fork public projects, make private copies, edit topics and schedule visibility changes.**
 
 [![CI](https://github.com/mhatipog/repo-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/mhatipog/repo-guardian/actions/workflows/ci.yml)
-[ChatGPT setup](docs/chatgpt-bridge.md) · [Agent instructions](AGENTS.md) · [Agent skill](skills/repo-guardian/SKILL.md) · [MIT license](LICENSE)
+[ChatGPT setup](docs/chatgpt-bridge.md) · [Downstream impact proof](docs/vulnerability-to-impact.md) · [Agent instructions](AGENTS.md) · [Agent skill](skills/repo-guardian/SKILL.md) · [MIT license](LICENSE)
 
 Repo Guardian is an open-source, *experimental* GitHub repository controller designed for ChatGPT, Codex, Copilot and other AI agents. It bridges admin capabilities missing from the standard ChatGPT GitHub connector using a private control repository, a stored GitHub token and scheduled GitHub Actions.
 
