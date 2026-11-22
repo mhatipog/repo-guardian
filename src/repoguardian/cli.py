@@ -33,6 +33,12 @@ def make_parser():
     vis.add_argument("target", choices=("private", "public"))
     runner = commands.add_parser("execute-json", help="Execute a single strict Repo Guardian JSON command")
     runner.add_argument("--request", default=None, help="JSON object (or set RG_REQUEST env)")
+    impact = commands.add_parser(
+        "impact-check", help="Check a local downstream-impact evidence ledger without credentials")
+    impact.add_argument("--project", required=True, help="Local project containing pyproject.toml and uv.lock")
+    impact.add_argument("--callsite", required=True, help="Source path relative to project")
+    impact.add_argument("--symbol", required=True, help="Affected API argument or symbol")
+    impact.add_argument("--matrix", required=True, help="JSON file recording controlled regression outcomes")
     return parser
 
 
@@ -75,6 +81,17 @@ def prepare_request(args, controller):
 
 def main(argv=None):
     args = make_parser().parse_args(argv)
+    if args.command == "impact-check":
+        # Deliberately no PAT, API calls, network, or target-code execution.
+        from .impact_evidence import EvidenceError, analyze
+
+        try:
+            result = analyze(args.project, args.callsite, args.symbol, args.matrix)
+            print(json.dumps(result, sort_keys=True))
+            return 0 if result["ready_for_coordinated_remediation"] else 1
+        except (EvidenceError, OSError, ValueError) as exc:
+            print("Repo Guardian impact-check: " + str(exc), file=sys.stderr)
+            return 2
     token = os.getenv("RG_ADMIN_TOKEN") or os.getenv("GH_TOKEN")
     if not token:
         print("RG_ADMIN_TOKEN or GH_TOKEN environment variable is required", file=sys.stderr)
