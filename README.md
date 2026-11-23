@@ -3,7 +3,7 @@
 **Manage GitHub repositories through ChatGPT: create repos, fork public projects, make private copies, edit topics and schedule visibility changes.**
 
 [![CI](https://github.com/mhatipog/repo-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/mhatipog/repo-guardian/actions/workflows/ci.yml)
-[ChatGPT setup](docs/chatgpt-bridge.md) · [Downstream impact proof](docs/vulnerability-to-impact.md) · [Agent instructions](AGENTS.md) · [Agent skill](skills/repo-guardian/SKILL.md) · [MIT license](LICENSE)
+[ChatGPT setup](docs/chatgpt-bridge.md) · [GitHub Marketplace release guide](docs/marketplace.md) · [Downstream impact proof](docs/vulnerability-to-impact.md) · [Agent instructions](AGENTS.md) · [Agent skill](skills/repo-guardian/SKILL.md) · [MIT license](LICENSE)
 
 Repo Guardian is an open-source, *experimental* GitHub repository controller designed for ChatGPT, Codex, Copilot and other AI agents. It bridges admin capabilities missing from the standard ChatGPT GitHub connector using a private control repository, a stored GitHub token and scheduled GitHub Actions.
 
@@ -51,7 +51,7 @@ repo-guardian topics mhatipog/repo-guardian chatgpt github-automation ai-agents
 repo-guardian private-copy octocat/Hello-World --name hello-test-private-copy
 ```
 
-For GitHub Actions, use `mhatipog/repo-guardian@<reviewed SHA>` with inputs `token` (an Actions secret) and `request` (strict JSON). See [CLI and reusable GitHub Action](docs/cli-and-action.md). This also makes the project discoverable as a GitHub Action without requiring a ChatGPT-specific plugin.
+For GitHub Actions, use `mhatipog/repo-guardian@<reviewed SHA>` with inputs `token` (an Actions secret), `request` (strict JSON), and optional `owner` (defaults to the workflow repository owner). See [CLI and reusable GitHub Action](docs/cli-and-action.md). This works independently of the private controller or a ChatGPT plugin. **Keep privileged workflows on trusted refs; never provide the admin token to workflows driven by untrusted pull requests or issue content.**
 
 ### Deployment verification
 
