@@ -1,5 +1,5 @@
 name: Repo Guardian GitHub automation
-description: Use your GitHub PAT to manage topics, repositories, public forks, private copies, and visibility in GitHub Actions
+description: Manage your GitHub repository topics, forks, private copies, and visibility with explicit JSON requests
 author: Repo Guardian contributors
 branding:
   icon: git-branch
@@ -9,6 +9,9 @@ inputs:
   token:
     description: GitHub token with required repository administration permissions
     required: true
+  owner:
+    description: GitHub account owning the target repositories; defaults to the calling repository owner
+    required: false
   request:
     description: Strict Repo Guardian JSON object to execute
     required: true
@@ -20,6 +23,7 @@ runs:
       shell: bash
       env:
         RG_ADMIN_TOKEN: ${{ inputs.token }}
+        RG_OWNER: ${{ inputs.owner || github.repository_owner }}
         RG_REQUEST: ${{ inputs.request }}
         PYTHONPATH: ${{ github.action_path }}/src
       run: |
