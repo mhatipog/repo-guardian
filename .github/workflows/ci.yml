@@ -32,5 +32,24 @@ jobs:
       - name: Smoke test composite GitHub Action without privileged API calls
         uses: ./
         with:
+          owner: marketplace-test-user
           token: ${{ github.token }}
           request: '{"version":1,"action":"status"}'
+      - name: Verify non-default owner is used for request authorization
+        env:
+          RG_OWNER: marketplace-test-user
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          from repoguardian.controller import Refused, parse_intent
+
+          allowed = '{"version":1,"action":"topics","repo":"marketplace-test-user/example","names":["automation"]}'
+          forbidden = '{"version":1,"action":"topics","repo":"mhatipog/example","names":["automation"]}'
+          assert parse_intent(allowed)["repo"] == "marketplace-test-user/example"
+          try:
+              parse_intent(forbidden)
+          except Refused as exc:
+              assert "Only repositories owned by" in str(exc)
+          else:
+              raise AssertionError("owner boundary was not enforced")
+          PY
